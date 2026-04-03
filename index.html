@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>2048 Puzzle</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        .tile { transition: all 0.15s ease; font-size: 2rem; font-weight: bold; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white flex items-center justify-center min-h-screen font-sans">
+    <div class="max-w-md w-full p-6">
+        <!-- Header with your anime avatar -->
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h1 class="text-5xl font-bold text-yellow-400 tracking-tighter">2048</h1>
+                <p class="text-zinc-400 text-sm">Made by Sean (nrsteward)</p>
+            </div>
+            <img src="https://via.placeholder.com/80?text=Your+Anime+Self" alt="Sean" class="w-16 h-16 rounded-full border-2 border-yellow-400"> <!-- Upload your anime image and replace URL -->
+        </div>
+
+        <div class="flex justify-between mb-4">
+            <div class="bg-zinc-900 p-3 rounded-xl text-center">
+                <p class="text-xs text-zinc-400">SCORE</p>
+                <p id="score" class="text-3xl font-bold">0</p>
+            </div>
+            <div class="bg-zinc-900 p-3 rounded-xl text-center">
+                <p class="text-xs text-zinc-400">BEST</p>
+                <p id="best" class="text-3xl font-bold">0</p>
+            </div>
+        </div>
+
+        <div id="grid" class="grid grid-cols-4 gap-2 bg-zinc-800 p-4 rounded-3xl aspect-square"></div>
+
+        <div class="mt-6 flex gap-3">
+            <button id="restart" class="flex-1 bg-yellow-400 text-black py-4 rounded-2xl font-bold text-lg">New Game</button>
+            <a href="https://www.buymeacoffee.com/yourusername" target="_blank" class="flex-1 bg-green-500 py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-2">
+                ☕ Support
+            </a>
+        </div>
+
+        <!-- AdSense placeholder (sign up at adsense.google.com later) -->
+        <div class="mt-8 text-center text-xs text-zinc-500">Ads will go here once approved</div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
