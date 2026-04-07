@@ -1,4 +1,4 @@
-// ====================== 2048 with TRUE SLIDING ANIMATIONS + START SCREEN ======================
+// ====================== 2048 with TRUE SLIDING ANIMATIONS + START SCREEN + SOUND EFFECTS ======================
 let grid = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
@@ -10,7 +10,91 @@ const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
 const startScreen = document.getElementById("start-screen");
 
-// Setup grid container
+let audioContext;
+
+// Simple Web Audio sound functions
+function playSound(type, value = 0) {
+    if (!audioContext) return;
+    try {
+        const oscillator = audioContext.createOscillator();
+        const gain = audioContext.createGain();
+
+        oscillator.connect(gain);
+        gain.connect(audioContext.destination);
+
+        switch (type) {
+            case "move":
+                oscillator.type = "sine";
+                oscillator.frequency.setValueAtTime(180, audioContext.currentTime);
+                gain.gain.value = 0.15;
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.12);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.15);
+                break;
+
+            case "merge":
+                const freq = Math.min(400 + Math.log2(value || 4) * 120, 1200);
+                oscillator.type = "triangle";
+                oscillator.frequency.setValueAtTime(freq, audioContext.currentTime);
+                gain.gain.value = 0.25;
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.28);
+                break;
+
+            case "spawn":
+                oscillator.type = "sine";
+                oscillator.frequency.setValueAtTime(420, audioContext.currentTime);
+                gain.gain.value = 0.12;
+                gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.08);
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.1);
+                break;
+
+            case "win":
+                // Ascending victory tones
+                [880, 1100, 1380, 1760].forEach((f, i) => {
+                    setTimeout(() => {
+                        const o = audioContext.createOscillator();
+                        const g = audioContext.createGain();
+                        o.type = "sine";
+                        o.frequency.value = f;
+                        g.gain.value = 0.25;
+                        g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.6);
+                        o.connect(g).connect(audioContext.destination);
+                        o.start();
+                        o.stop(audioContext.currentTime + 0.6);
+                    }, i * 80);
+                });
+                break;
+
+            case "gameover":
+                // Descending sad tones
+                [440, 330, 220].forEach((f, i) => {
+                    setTimeout(() => {
+                        const o = audioContext.createOscillator();
+                        const g = audioContext.createGain();
+                        o.type = "sawtooth";
+                        o.frequency.value = f;
+                        g.gain.value = 0.18;
+                        g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.8);
+                        o.connect(g).connect(audioContext.destination);
+                        o.start();
+                        o.stop(audioContext.currentTime + 0.9);
+                    }, i * 120);
+                });
+                break;
+        }
+    } catch (e) {}
+}
+
+function initAudio() {
+    if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+// Setup grid
 gridEl.style.position = "relative";
 gridEl.style.width = "100%";
 gridEl.style.aspectRatio = "1 / 1";
@@ -82,9 +166,11 @@ function updateDisplay(previousGrid = null) {
             if (oldValue === 0 && value > 0) {
                 tile.classList.add("new");
                 setTimeout(() => tile.classList.remove("new"), 280);
+                playSound("spawn");
             } else if (value > oldValue && oldValue > 0) {
                 tile.classList.add("merged");
                 setTimeout(() => tile.classList.remove("merged"), 300);
+                playSound("merge", value);
             }
         }
     });
@@ -155,6 +241,7 @@ function move(direction) {
     else if (direction === "Down")  { rotateGrid(); moved = moveLeft(); rotateGrid(); rotateGrid(); rotateGrid(); }
 
     if (moved) {
+        playSound("move");
         updateDisplay(previousGrid);
         setTimeout(() => {
             addRandomTile();
@@ -175,6 +262,7 @@ function checkWin() {
     if (hasWon) return;
     if (grid.includes(2048)) {
         hasWon = true;
+        playSound("win");
         setTimeout(() => alert("🎉 You Win!\n\nYou reached 2048!"), 200);
     }
 }
@@ -189,6 +277,7 @@ function checkGameOver() {
         if (row < 3 && grid[i+4] === value) return;
     }
     gameOverFlag = true;
+    playSound("gameover");
     setTimeout(() => alert(`Game Over!\nFinal Score: ${score}`), 300);
 }
 
@@ -224,12 +313,11 @@ document.getElementById("restart").addEventListener("click", () => {
     updateDisplay();
 });
 
-// ====================== START SCREEN LOGIC ======================
+// ====================== START SCREEN ======================
 document.getElementById("start-button").addEventListener("click", () => {
-    startScreen.style.display = "none";   // Hide start screen
+    initAudio();                      // Initialize audio on user gesture
+    startScreen.style.display = "none";
     addRandomTile();
     addRandomTile();
     updateDisplay();
 });
-
-// Game does NOT start automatically — waits for player to click Start
