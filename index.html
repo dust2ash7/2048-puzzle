@@ -78,7 +78,49 @@
 
         <p class="text-center text-zinc-500 text-xs mt-6">Swipe or use arrow keys • Reach 2048 to win!</p>
     </div>
+    <!-- START SCREEN OVERLAY -->
+    <div id="start-screen" class="fixed inset-0 bg-zinc-950/95 flex items-center justify-center z-50">
+        <div class="max-w-md w-full mx-6 bg-zinc-900 rounded-3xl p-8 text-center shadow-2xl">
+            <!-- Title -->
+            <h1 class="text-7xl font-bold text-amber-400 tracking-tighter mb-1">2048</h1>
+            <p class="text-zinc-400 text-lg mb-8">Slide • Merge • Reach 2048</p>
 
+            <!-- Rules -->
+            <div class="bg-zinc-800 rounded-2xl p-6 mb-8 text-left">
+                <h2 class="text-amber-300 font-semibold text-xl mb-5">How to Play</h2>
+                <ul class="space-y-4 text-zinc-300">
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
+                        <span>Use <strong class="text-white">arrow keys</strong> or <strong class="text-white">swipe</strong> on mobile</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
+                        <span>Adjacent tiles with the same number <strong class="text-white">merge</strong> into their sum</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
+                        <span>A new 2 or 4 appears after every move</span>
+                    </li>
+                    <li class="flex items-start gap-3">
+                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
+                        <span>Reach <span class="text-emerald-400 font-bold">2048</span> to win!</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Start Button -->
+            <button id="start-button"
+                    class="w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-black font-bold text-2xl py-6 rounded-3xl transition-all duration-200">
+                START GAME
+            </button>
+
+            <!-- Credit -->
+            <p class="text-zinc-500 text-sm mt-8 flex items-center justify-center gap-2">
+                by Sean • nrsteward
+                <img src="avatar.jpg" alt="Sean" class="w-8 h-8 rounded-2xl">
+            </p>
+        </div>
+    </div>
     <script src="script.js"></script>
 </body>
 </html>
