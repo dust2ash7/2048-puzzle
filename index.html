@@ -6,16 +6,36 @@
     <title>2048 Puzzle</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
-    <style>
-        .tile {
-            transition: all 0.15s ease;
-            font-size: 2.25rem;
-            font-weight: 700;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+   <style>
+    .tile {
+        position: absolute;
+        width: calc(25% - 12px);
+        height: calc(25% - 12px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 2.25rem;
+        font-weight: 700;
+        border-radius: 1.5rem;
+        transition: none; /* We handle movement with JS for true sliding */
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    }
+
+    @keyframes tilePopNew {
+        0%   { transform: scale(0.3); opacity: 0; }
+        70%  { transform: scale(1.15); }
+        100% { transform: scale(1); opacity: 1; }
+    }
+
+    @keyframes tileMergePop {
+        0%   { transform: scale(0.6); }
+        50%  { transform: scale(1.35); }
+        100% { transform: scale(1); }
+    }
+
+    .tile.new { animation: tilePopNew 0.25s ease forwards; }
+    .tile.merged { animation: tileMergePop 0.28s ease forwards; }
+</style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center font-sans">
     <div class="max-w-md w-full mx-auto p-6">
