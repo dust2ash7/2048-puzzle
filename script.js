@@ -1,4 +1,4 @@
-// ====================== 2048 with TRUE SLIDING ANIMATIONS ======================
+// ====================== 2048 with TRUE SLIDING ANIMATIONS + START SCREEN ======================
 let grid = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
@@ -8,16 +8,16 @@ let hasWon = false;
 const gridEl = document.getElementById("grid");
 const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
+const startScreen = document.getElementById("start-screen");
 
-// Create the visual grid container (relative positioned)
+// Setup grid container
 gridEl.style.position = "relative";
 gridEl.style.width = "100%";
 gridEl.style.aspectRatio = "1 / 1";
 
 const tiles = [];
-const tileElements = new Map(); // value → element (for cleanup)
 
-// Create 16 background cells (for grid look)
+// Background cells
 for (let i = 0; i < 16; i++) {
     const bg = document.createElement("div");
     bg.className = "absolute bg-zinc-900 rounded-3xl";
@@ -30,7 +30,7 @@ for (let i = 0; i < 16; i++) {
     gridEl.appendChild(bg);
 }
 
-// Create tile pool
+// Tile elements
 for (let i = 0; i < 16; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
@@ -44,8 +44,8 @@ bestEl.textContent = bestScore;
 function getTilePosition(index) {
     const row = Math.floor(index / 4);
     const col = index % 4;
-    const size = 25; // percentage
-    const gap = 6;   // px offset
+    const size = 25;
+    const gap = 6;
     return {
         left: `calc(${col * size}% + ${gap}px)`,
         top: `calc(${row * size}% + ${gap}px)`
@@ -53,7 +53,6 @@ function getTilePosition(index) {
 }
 
 function updateDisplay(previousGrid = null) {
-    // Remove old merged tiles that are no longer needed
     document.querySelectorAll('.merged').forEach(el => {
         if (!grid.includes(parseInt(el.textContent))) el.remove();
     });
@@ -78,7 +77,6 @@ function updateDisplay(previousGrid = null) {
         tile.style.opacity = "1";
         tile.style.transform = "scale(1)";
 
-        // Animation for new tiles and merges
         if (previousGrid) {
             const oldValue = previousGrid[visualIndex];
             if (oldValue === 0 && value > 0) {
@@ -157,10 +155,7 @@ function move(direction) {
     else if (direction === "Down")  { rotateGrid(); moved = moveLeft(); rotateGrid(); rotateGrid(); rotateGrid(); }
 
     if (moved) {
-        // First update positions instantly (for sliding effect)
         updateDisplay(previousGrid);
-
-        // Then spawn new tile after short delay
         setTimeout(() => {
             addRandomTile();
             updateDisplay(previousGrid);
@@ -197,7 +192,7 @@ function checkGameOver() {
     setTimeout(() => alert(`Game Over!\nFinal Score: ${score}`), 300);
 }
 
-// Controls (unchanged)
+// ====================== CONTROLS ======================
 document.addEventListener("keydown", e => {
     if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
         e.preventDefault();
@@ -223,16 +218,18 @@ document.getElementById("restart").addEventListener("click", () => {
     score = 0;
     gameOverFlag = false;
     hasWon = false;
-    // Clear extra tiles if any
-    document.querySelectorAll('.tile').forEach(t => {
-        if (t.textContent) t.style.opacity = "0";
-    });
+    document.querySelectorAll('.tile').forEach(t => { if (t.textContent) t.style.opacity = "0"; });
     addRandomTile();
     addRandomTile();
     updateDisplay();
 });
 
-// Start the game
-addRandomTile();
-addRandomTile();
-updateDisplay();
+// ====================== START SCREEN LOGIC ======================
+document.getElementById("start-button").addEventListener("click", () => {
+    startScreen.style.display = "none";   // Hide start screen
+    addRandomTile();
+    addRandomTile();
+    updateDisplay();
+});
+
+// Game does NOT start automatically — waits for player to click Start
