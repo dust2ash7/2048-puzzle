@@ -16,7 +16,7 @@
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
-   <style>
+ <style>
     .tile {
         position: absolute;
         width: calc(25% - 12px);
@@ -27,24 +27,44 @@
         font-size: 2.25rem;
         font-weight: 700;
         border-radius: 1.5rem;
-        transition: none; /* We handle movement with JS for true sliding */
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
+                    inset 0 2px 4px rgb(255 255 255 / 0.2);
+        transition: none;
+        overflow: hidden;
+    }
+
+    /* Merge flash */
+    .tile.merged::after {
+        content: '';
+        position: absolute;
+        inset: -50%;
+        background: radial-gradient(circle, rgba(255,255,255,0.9) 20%, transparent 70%);
+        animation: mergeFlash 0.4s ease-out forwards;
+        pointer-events: none;
+    }
+
+    @keyframes mergeFlash {
+        0% { opacity: 0.9; transform: scale(0.6); }
+        100% { opacity: 0; transform: scale(2.2); }
     }
 
     @keyframes tilePopNew {
-        0%   { transform: scale(0.3); opacity: 0; }
-        70%  { transform: scale(1.15); }
-        100% { transform: scale(1); opacity: 1; }
+        0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+        60%  { transform: scale(1.25) rotate(8deg); }
+        100% { transform: scale(1) rotate(0); opacity: 1; }
     }
 
-    @keyframes tileMergePop {
-        0%   { transform: scale(0.6); }
-        50%  { transform: scale(1.35); }
-        100% { transform: scale(1); }
+    .tile.new {
+        animation: tilePopNew 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
     }
 
-    .tile.new { animation: tilePopNew 0.25s ease forwards; }
-    .tile.merged { animation: tileMergePop 0.28s ease forwards; }
+    /* Particle container */
+    .particles {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        overflow: hidden;
+    }
 </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center font-sans">
