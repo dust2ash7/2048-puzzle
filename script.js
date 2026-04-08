@@ -1,4 +1,4 @@
-// ====================== 2048 - FIXED & WORKING ======================
+// ====================== 2048 - CLEAN & FIXED VERSION ======================
 let grid = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
@@ -10,7 +10,7 @@ const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
 const startScreen = document.getElementById("start-screen");
 
-let audioContext;
+let audioContext = null;   // ← Only declared once
 
 function initAudio() {
     if (!audioContext) {
@@ -26,31 +26,37 @@ function playSound(type, value = 0) {
         osc.connect(gain);
         gain.connect(audioContext.destination);
 
-        switch (type) {
-            case "move":    osc.type = "sine"; osc.frequency.value = 160; gain.gain.value = 0.12; break;
-            case "merge":   osc.type = "triangle"; osc.frequency.value = 320 + Math.log2(value || 4) * 140; gain.gain.value = 0.28; break;
-            case "spawn":   osc.type = "sine"; osc.frequency.value = 520; gain.gain.value = 0.1; break;
-            case "win":
-                [820, 1040, 1310, 1650].forEach((f,i) => setTimeout(() => {
-                    const o = audioContext.createOscillator(); const g = audioContext.createGain();
-                    o.type = "sine"; o.frequency.value = f; g.gain.value = 0.22;
-                    o.connect(g).connect(audioContext.destination); o.start(); o.stop(audioContext.currentTime + 0.7);
-                }, i*70));
-                return;
-            case "gameover":
-                [480, 360, 240].forEach((f,i) => setTimeout(() => {
-                    const o = audioContext.createOscillator(); const g = audioContext.createGain();
-                    o.type = "sawtooth"; o.frequency.value = f; g.gain.value = 0.2;
-                    o.connect(g).connect(audioContext.destination); o.start(); o.stop(audioContext.currentTime + 0.95);
-                }, i*110));
-                return;
+        if (type === "move") {
+            osc.type = "sine"; osc.frequency.value = 160; gain.gain.value = 0.12;
+        } else if (type === "merge") {
+            osc.type = "triangle"; osc.frequency.value = 320 + Math.log2(value || 4) * 140; gain.gain.value = 0.28;
+        } else if (type === "spawn") {
+            osc.type = "sine"; osc.frequency.value = 520; gain.gain.value = 0.1;
+        } else if (type === "win") {
+            [820, 1040, 1310, 1650].forEach((f, i) => setTimeout(() => {
+                const o = audioContext.createOscillator();
+                const g = audioContext.createGain();
+                o.type = "sine"; o.frequency.value = f; g.gain.value = 0.22;
+                o.connect(g).connect(audioContext.destination);
+                o.start(); o.stop(audioContext.currentTime + 0.7);
+            }, i * 70));
+            return;
+        } else if (type === "gameover") {
+            [480, 360, 240].forEach((f, i) => setTimeout(() => {
+                const o = audioContext.createOscillator();
+                const g = audioContext.createGain();
+                o.type = "sawtooth"; o.frequency.value = f; g.gain.value = 0.2;
+                o.connect(g).connect(audioContext.destination);
+                o.start(); o.stop(audioContext.currentTime + 0.95);
+            }, i * 110));
+            return;
         }
         osc.start();
         osc.stop(audioContext.currentTime + 0.4);
-    } catch(e) {}
+    } catch (e) {}
 }
 
-// === Grid Setup ===
+// Grid Setup
 gridEl.style.position = "relative";
 gridEl.style.width = "100%";
 gridEl.style.aspectRatio = "1 / 1";
@@ -63,9 +69,9 @@ for (let i = 0; i < 16; i++) {
     bg.className = "absolute bg-zinc-900 rounded-3xl";
     bg.style.width = "calc(25% - 12px)";
     bg.style.height = "calc(25% - 12px)";
-    const r = Math.floor(i/4), c = i%4;
-    bg.style.left = `calc(${c*25}% + 6px)`;
-    bg.style.top = `calc(${r*25}% + 6px)`;
+    const r = Math.floor(i / 4), c = i % 4;
+    bg.style.left = `calc(${c * 25}% + 6px)`;
+    bg.style.top = `calc(${r * 25}% + 6px)`;
     gridEl.appendChild(bg);
 }
 
@@ -121,34 +127,57 @@ function getColor(value) {
 }
 
 function addRandomTile() {
-    const empty = grid.map((v,i) => v===0 ? i : -1).filter(i => i>=0);
+    const empty = grid.map((v, i) => v === 0 ? i : -1).filter(i => i >= 0);
     if (empty.length === 0) return false;
-    grid[empty[Math.floor(Math.random()*empty.length)]] = Math.random() < 0.9 ? 2 : 4;
+    grid[empty[Math.floor(Math.random() * empty.length)]] = Math.random() < 0.9 ? 2 : 4;
     return true;
 }
 
-// Movement logic (unchanged)
-function slide(row) { /* ... same as before ... */ 
+function slide(row) {
     let newRow = row.filter(v => v !== 0);
-    for (let i = 0; i < newRow.length-1; i++) {
-        if (newRow[i] === newRow[i+1]) {
-            newRow[i] *= 2; score += newRow[i]; newRow.splice(i+1,1); i++;
+    for (let i = 0; i < newRow.length - 1; i++) {
+        if (newRow[i] === newRow[i + 1]) {
+            newRow[i] *= 2;
+            score += newRow[i];
+            newRow.splice(i + 1, 1);
+            i++;
         }
     }
     while (newRow.length < 4) newRow.push(0);
     return newRow;
 }
-function moveLeft() { let moved = false; for (let r=0; r<4; r++) { const start=r*4; const row=grid.slice(start,start+4); const newRow=slide(row); if (row.join()!==newRow.join()) moved=true; for (let i=0;i<4;i++) grid[start+i]=newRow[i]; } return moved; }
-function rotateGrid() { const newGrid=Array(16).fill(0); for (let i=0;i<16;i++) { const r=Math.floor(i/4), c=i%4; newGrid[c*4+(3-r)]=grid[i]; } grid=newGrid; }
+
+function moveLeft() {
+    let moved = false;
+    for (let r = 0; r < 4; r++) {
+        const start = r * 4;
+        const row = grid.slice(start, start + 4);
+        const newRow = slide(row);
+        if (row.join() !== newRow.join()) moved = true;
+        for (let i = 0; i < 4; i++) grid[start + i] = newRow[i];
+    }
+    return moved;
+}
+
+function rotateGrid() {
+    const newGrid = Array(16).fill(0);
+    for (let i = 0; i < 16; i++) {
+        const row = Math.floor(i / 4);
+        const col = i % 4;
+        newGrid[col * 4 + (3 - row)] = grid[i];
+    }
+    grid = newGrid;
+}
 
 function move(direction) {
     if (gameOverFlag || hasWon) return;
     const previous = [...grid];
     let moved = false;
-    if (direction==="Left") moved = moveLeft();
-    else if (direction==="Right") { rotateGrid(); rotateGrid(); moved=moveLeft(); rotateGrid(); rotateGrid(); }
-    else if (direction==="Up")    { rotateGrid(); rotateGrid(); rotateGrid(); moved=moveLeft(); rotateGrid(); }
-    else if (direction==="Down")  { rotateGrid(); moved=moveLeft(); rotateGrid(); rotateGrid(); rotateGrid(); }
+
+    if (direction === "Left") moved = moveLeft();
+    else if (direction === "Right") { rotateGrid(); rotateGrid(); moved = moveLeft(); rotateGrid(); rotateGrid(); }
+    else if (direction === "Up")    { rotateGrid(); rotateGrid(); rotateGrid(); moved = moveLeft(); rotateGrid(); }
+    else if (direction === "Down")  { rotateGrid(); moved = moveLeft(); rotateGrid(); rotateGrid(); rotateGrid(); }
 
     if (moved) {
         playSound("move");
@@ -179,10 +208,10 @@ function checkWin() {
 function checkGameOver() {
     if (grid.includes(0)) return;
     for (let i = 0; i < 16; i++) {
-        const v = grid[i]; if (v===0) continue;
-        const r = Math.floor(i/4), c = i%4;
-        if (c<3 && grid[i+1]===v) return;
-        if (r<3 && grid[i+4]===v) return;
+        const v = grid[i]; if (v === 0) continue;
+        const r = Math.floor(i / 4), c = i % 4;
+        if (c < 3 && grid[i + 1] === v) return;
+        if (r < 3 && grid[i + 4] === v) return;
     }
     gameOverFlag = true;
     playSound("gameover");
@@ -193,26 +222,31 @@ function checkGameOver() {
 document.addEventListener("keydown", e => {
     if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
         e.preventDefault();
-        move(e.key.replace("Arrow",""));
+        move(e.key.replace("Arrow", ""));
     }
 });
 
-let tsX=0, tsY=0;
-gridEl.addEventListener("touchstart", e=>{ tsX=e.changedTouches[0].screenX; tsY=e.changedTouches[0].screenY; });
-gridEl.addEventListener("touchend", e=>{
+let tsX = 0, tsY = 0;
+gridEl.addEventListener("touchstart", e => { tsX = e.changedTouches[0].screenX; tsY = e.changedTouches[0].screenY; });
+gridEl.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].screenX - tsX;
     const dy = e.changedTouches[0].screenY - tsY;
-    if (Math.abs(dx)<40 && Math.abs(dy)<40) return;
-    move(Math.abs(dx)>Math.abs(dy) ? (dx>0?"Right":"Left") : (dy>0?"Down":"Up"));
+    if (Math.abs(dx) < 40 && Math.abs(dy) < 40) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "Right" : "Left") : (dy > 0 ? "Down" : "Up"));
 });
 
 document.getElementById("restart").addEventListener("click", () => {
-    grid = Array(16).fill(0); score=0; gameOverFlag=false; hasWon=false;
-    document.querySelectorAll('.tile').forEach(t=>t.style.opacity="0");
-    addRandomTile(); addRandomTile(); updateDisplay();
+    grid = Array(16).fill(0);
+    score = 0;
+    gameOverFlag = false;
+    hasWon = false;
+    document.querySelectorAll('.tile').forEach(t => t.style.opacity = "0");
+    addRandomTile();
+    addRandomTile();
+    updateDisplay();
 });
 
-// ====================== START BUTTON ======================
+// ====================== START GAME BUTTON ======================
 document.getElementById("start-button").addEventListener("click", () => {
     initAudio();
     startScreen.style.display = "none";
