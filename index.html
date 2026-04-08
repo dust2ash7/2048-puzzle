@@ -6,58 +6,52 @@
     <title>2048 Puzzle</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
+    
     <style>
-    .tile {
-        position: absolute;
-        width: calc(25% - 12px);
-        height: calc(25% - 12px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2.25rem;
-        font-weight: 700;
-        border-radius: 1.5rem;
-        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
-                    inset 0 2px 4px rgb(255 255 255 / 0.2);
-        transition: none;
-        overflow: hidden;
-    }
+        .tile {
+            position: absolute;
+            width: calc(25% - 12px);
+            height: calc(25% - 12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.25rem;
+            font-weight: 700;
+            border-radius: 1.5rem;
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
+                        inset 0 2px 4px rgb(255 255 255 / 0.2);
+            transition: none;
+            overflow: hidden;
+        }
 
-    /* Merge flash */
-    .tile.merged::after {
-        content: '';
-        position: absolute;
-        inset: -50%;
-        background: radial-gradient(circle, rgba(255,255,255,0.9) 20%, transparent 70%);
-        animation: mergeFlash 0.4s ease-out forwards;
-        pointer-events: none;
-    }
+        /* Merge flash effect */
+        .tile.merged::after {
+            content: '';
+            position: absolute;
+            inset: -50%;
+            background: radial-gradient(circle, rgba(255,255,255,0.9) 20%, transparent 70%);
+            animation: mergeFlash 0.4s ease-out forwards;
+            pointer-events: none;
+        }
 
-    @keyframes mergeFlash {
-        0% { opacity: 0.9; transform: scale(0.6); }
-        100% { opacity: 0; transform: scale(2.2); }
-    }
+        @keyframes mergeFlash {
+            0%   { opacity: 0.9; transform: scale(0.6); }
+            100% { opacity: 0; transform: scale(2.2); }
+        }
 
-    @keyframes tilePopNew {
-        0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; }
-        60%  { transform: scale(1.25) rotate(8deg); }
-        100% { transform: scale(1) rotate(0); opacity: 1; }
-    }
+        @keyframes tilePopNew {
+            0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+            60%  { transform: scale(1.25) rotate(8deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
 
-    .tile.new {
-        animation: tilePopNew 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-    }
-
-    /* Particle container */
-    .particles {
-        position: absolute;
-        inset: 0;
-        pointer-events: none;
-        overflow: hidden;
-    }
-</style>
+        .tile.new {
+            animation: tilePopNew 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+    </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center font-sans">
+
     <div class="max-w-md w-full mx-auto p-6">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
@@ -65,8 +59,7 @@
                 <h1 class="text-6xl font-bold text-amber-400 tracking-tighter">2048</h1>
                 <p class="text-zinc-400 text-sm mt-1">by Sean • nrsteward</p>
             </div>
-            <!-- Your anime avatar (replace URL later) -->
-            <img src="https://github.com/dust2ash7/2048-puzzle/blob/main/avatar.jpg" alt="Sean Anime" class="w-16 h-16 rounded-2xl border-4 border-amber-400 shadow-lg">
+            <img src="avatar.jpg" alt="Sean Anime" class="w-16 h-16 rounded-2xl border-4 border-amber-400 shadow-lg">
         </div>
 
         <!-- Scores -->
@@ -86,7 +79,7 @@
 
         <!-- Buttons -->
         <div class="mt-8 flex gap-3">
-            <button id="restart" 
+            <button id="restart"
                     class="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
                 NEW GAME
             </button>
@@ -98,49 +91,35 @@
 
         <p class="text-center text-zinc-500 text-xs mt-6">Swipe or use arrow keys • Reach 2048 to win!</p>
     </div>
-    <!-- START SCREEN OVERLAY -->
+
+    <!-- START SCREEN -->
     <div id="start-screen" class="fixed inset-0 bg-zinc-950/95 flex items-center justify-center z-50">
         <div class="max-w-md w-full mx-6 bg-zinc-900 rounded-3xl p-8 text-center shadow-2xl">
-            <!-- Title -->
             <h1 class="text-7xl font-bold text-amber-400 tracking-tighter mb-1">2048</h1>
             <p class="text-zinc-400 text-lg mb-8">Slide • Merge • Reach 2048</p>
 
-            <!-- Rules -->
             <div class="bg-zinc-800 rounded-2xl p-6 mb-8 text-left">
                 <h2 class="text-amber-300 font-semibold text-xl mb-5">How to Play</h2>
                 <ul class="space-y-4 text-zinc-300">
-                    <li class="flex items-start gap-3">
-                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
-                        <span>Use <strong class="text-white">arrow keys</strong> or <strong class="text-white">swipe</strong> on mobile</span>
-                    </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
-                        <span>Adjacent tiles with the same number <strong class="text-white">merge</strong> into their sum</span>
-                    </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
-                        <span>A new 2 or 4 appears after every move</span>
-                    </li>
-                    <li class="flex items-start gap-3">
-                        <span class="text-amber-400 text-2xl leading-none mt-px">→</span>
-                        <span>Reach <span class="text-emerald-400 font-bold">2048</span> to win!</span>
-                    </li>
+                    <li class="flex items-start gap-3">→ Use <strong class="text-white">arrow keys</strong> or <strong class="text-white">swipe</strong> on mobile</li>
+                    <li class="flex items-start gap-3">→ Same numbers <strong class="text-white">merge</strong> into their sum</li>
+                    <li class="flex items-start gap-3">→ A new 2 or 4 appears after every move</li>
+                    <li class="flex items-start gap-3">→ Reach <span class="text-emerald-400 font-bold">2048</span> to win!</li>
                 </ul>
             </div>
 
-            <!-- Start Button -->
             <button id="start-button"
                     class="w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-black font-bold text-2xl py-6 rounded-3xl transition-all duration-200">
                 START GAME
             </button>
 
-            <!-- Credit -->
             <p class="text-zinc-500 text-sm mt-8 flex items-center justify-center gap-2">
                 by Sean • nrsteward
                 <img src="avatar.jpg" alt="Sean" class="w-8 h-8 rounded-2xl">
             </p>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
