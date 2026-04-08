@@ -1,17 +1,21 @@
-// ====================== 2048 - CLEAN & FIXED VERSION ======================
+// ====================== 2048 - WITH REWARDED UNDO ======================
 let grid = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
 let gameOverFlag = false;
 let hasWon = false;
+let previousGrid = null;     // For undo
+let undoUsed = false;
 
 const gridEl = document.getElementById("grid");
 const scoreEl = document.getElementById("score");
 const bestEl = document.getElementById("best");
 const startScreen = document.getElementById("start-screen");
+const undoModal = document.getElementById("undo-modal");
 
-let audioContext = null;   // ← Only declared once
+let audioContext = null;
 
+// ====================== AUDIO ======================
 function initAudio() {
     if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
@@ -29,7 +33,9 @@ function playSound(type, value = 0) {
         if (type === "move") {
             osc.type = "sine"; osc.frequency.value = 160; gain.gain.value = 0.12;
         } else if (type === "merge") {
-            osc.type = "triangle"; osc.frequency.value = 320 + Math.log2(value || 4) * 140; gain.gain.value = 0.28;
+            osc.type = "triangle"; 
+            osc.frequency.value = 320 + Math.log2(value || 4) * 140; 
+            gain.gain.value = 0.28;
         } else if (type === "spawn") {
             osc.type = "sine"; osc.frequency.value = 520; gain.gain.value = 0.1;
         } else if (type === "win") {
@@ -51,12 +57,13 @@ function playSound(type, value = 0) {
             }, i * 110));
             return;
         }
+
         osc.start();
         osc.stop(audioContext.currentTime + 0.4);
     } catch (e) {}
 }
 
-// Grid Setup
+// ====================== GRID SETUP ======================
 gridEl.style.position = "relative";
 gridEl.style.width = "100%";
 gridEl.style.aspectRatio = "1 / 1";
@@ -92,10 +99,13 @@ function getTilePosition(index) {
     return { left: `calc(${col * 25}% + 6px)`, top: `calc(${row * 25}% + 6px)` };
 }
 
-function updateDisplay(previousGrid = null) {
+function updateDisplay(previousGridState = null) {
     tiles.forEach((tile, i) => {
         const value = grid[i];
-        if (value === 0) { tile.style.opacity = "0"; return; }
+        if (value === 0) {
+            tile.style.opacity = "0";
+            return;
+        }
 
         const pos = getTilePosition(i);
         tile.style.left = pos.left;
@@ -106,8 +116,8 @@ function updateDisplay(previousGrid = null) {
         tile.textContent = value;
         tile.style.opacity = "1";
 
-        if (previousGrid) {
-            const oldVal = previousGrid[i];
+        if (previousGridState) {
+            const oldVal = previousGridState[i];
             if (oldVal === 0 && value > 0) {
                 tile.classList.add("new");
                 setTimeout(() => tile.classList.remove("new"), 320);
@@ -122,7 +132,11 @@ function updateDisplay(previousGrid = null) {
 }
 
 function getColor(value) {
-    const colors = {2:"#f59e0b",4:"#eab308",8:"#c2410f",16:"#b91c1c",32:"#991b1b",64:"#7e22ce",128:"#6b21a8",256:"#581c87",512:"#1e40af",1024:"#1e3a8a",2048:"#14b8a6",4096:"#0f766e"};
+    const colors = {
+        2: "#f59e0b", 4: "#eab308", 8: "#c2410f", 16: "#b91c1c",
+        32: "#991b1b", 64: "#7e22ce", 128: "#6b21a8", 256: "#581c87",
+        512: "#1e40af", 1024: "#1e3a8a", 2048: "#14b8a6", 4096: "#0f766e"
+    };
     return colors[value] || "#0c3a3a";
 }
 
@@ -134,7 +148,7 @@ function addRandomTile() {
 }
 
 function slide(row) {
-    let newRow = row.filter(v => v !== 0);
+    let newRow = row.filter(val => val !== 0);
     for (let i = 0; i < newRow.length - 1; i++) {
         if (newRow[i] === newRow[i + 1]) {
             newRow[i] *= 2;
@@ -169,8 +183,24 @@ function rotateGrid() {
     grid = newGrid;
 }
 
+function saveState() {
+    previousGrid = [...grid];
+}
+
+function performUndo() {
+    if (!previousGrid || undoUsed) return;
+    grid = [...previousGrid];
+    score = Math.max(0, score - 100); // small penalty for undo
+    undoUsed = true;
+    document.getElementById("undo").classList.add("opacity-50", "cursor-not-allowed");
+    updateDisplay();
+}
+
+// ====================== MOVE FUNCTION ======================
 function move(direction) {
     if (gameOverFlag || hasWon) return;
+
+    saveState();                    // Save state before moving
     const previous = [...grid];
     let moved = false;
 
@@ -187,6 +217,7 @@ function move(direction) {
             updateDisplay(previous);
             checkWin();
             checkGameOver();
+
             if (score > bestScore) {
                 bestScore = score;
                 localStorage.setItem("best2048", bestScore);
@@ -208,7 +239,8 @@ function checkWin() {
 function checkGameOver() {
     if (grid.includes(0)) return;
     for (let i = 0; i < 16; i++) {
-        const v = grid[i]; if (v === 0) continue;
+        const v = grid[i];
+        if (v === 0) continue;
         const r = Math.floor(i / 4), c = i % 4;
         if (c < 3 && grid[i + 1] === v) return;
         if (r < 3 && grid[i + 4] === v) return;
@@ -218,16 +250,19 @@ function checkGameOver() {
     setTimeout(() => alert(`Game Over!\nFinal Score: ${score}`), 400);
 }
 
-// Controls
+// ====================== CONTROLS ======================
 document.addEventListener("keydown", e => {
-    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
+    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
         e.preventDefault();
         move(e.key.replace("Arrow", ""));
     }
 });
 
 let tsX = 0, tsY = 0;
-gridEl.addEventListener("touchstart", e => { tsX = e.changedTouches[0].screenX; tsY = e.changedTouches[0].screenY; });
+gridEl.addEventListener("touchstart", e => {
+    tsX = e.changedTouches[0].screenX;
+    tsY = e.changedTouches[0].screenY;
+});
 gridEl.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].screenX - tsX;
     const dy = e.changedTouches[0].screenY - tsY;
@@ -235,18 +270,49 @@ gridEl.addEventListener("touchend", e => {
     move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "Right" : "Left") : (dy > 0 ? "Down" : "Up"));
 });
 
+// ====================== BUTTONS ======================
 document.getElementById("restart").addEventListener("click", () => {
     grid = Array(16).fill(0);
     score = 0;
     gameOverFlag = false;
     hasWon = false;
-    document.querySelectorAll('.tile').forEach(t => t.style.opacity = "0");
+    undoUsed = false;
+    previousGrid = null;
+    document.getElementById("undo").classList.remove("opacity-50", "cursor-not-allowed");
     addRandomTile();
     addRandomTile();
     updateDisplay();
 });
 
-// ====================== START GAME BUTTON ======================
+document.getElementById("undo").addEventListener("click", () => {
+    if (undoUsed || gameOverFlag || !previousGrid) return;
+    undoModal.classList.remove("hidden");
+});
+
+// ====================== REWARDED UNDO MODAL ======================
+document.getElementById("watch-ad-btn").addEventListener("click", () => {
+    const countdownEl = document.getElementById("ad-countdown");
+    const progressEl = document.getElementById("ad-progress");
+    let time = 6;
+
+    const timer = setInterval(() => {
+        time--;
+        countdownEl.textContent = time;
+        progressEl.style.width = `${(6 - time) * 16.66}%`;
+
+        if (time <= 0) {
+            clearInterval(timer);
+            undoModal.classList.add("hidden");
+            performUndo();
+        }
+    }, 1000);
+});
+
+document.getElementById("cancel-ad-btn").addEventListener("click", () => {
+    undoModal.classList.add("hidden");
+});
+
+// ====================== START SCREEN ======================
 document.getElementById("start-button").addEventListener("click", () => {
     initAudio();
     startScreen.style.display = "none";
