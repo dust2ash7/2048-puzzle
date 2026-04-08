@@ -24,7 +24,6 @@
             overflow: hidden;
         }
 
-        /* Merge flash effect */
         .tile.merged::after {
             content: '';
             position: absolute;
@@ -35,13 +34,13 @@
         }
 
         @keyframes mergeFlash {
-            0%   { opacity: 0.9; transform: scale(0.6); }
+            0% { opacity: 0.9; transform: scale(0.6); }
             100% { opacity: 0; transform: scale(2.2); }
         }
 
         @keyframes tilePopNew {
-            0%   { transform: scale(0.2) rotate(-12deg); opacity: 0; }
-            60%  { transform: scale(1.25) rotate(8deg); }
+            0% { transform: scale(0.2) rotate(-12deg); opacity: 0; }
+            60% { transform: scale(1.25) rotate(8deg); }
             100% { transform: scale(1) rotate(0); opacity: 1; }
         }
 
@@ -78,14 +77,18 @@
         <div id="grid" class="grid grid-cols-4 gap-3 bg-zinc-800 p-4 rounded-3xl shadow-2xl aspect-square"></div>
 
         <!-- Buttons -->
-        <div class="mt-8 flex gap-3">
+        <div class="mt-8 grid grid-cols-3 gap-3">
+            <button id="undo" 
+                    class="bg-zinc-700 hover:bg-zinc-600 text-white font-bold text-xl py-5 rounded-3xl transition flex items-center justify-center gap-2">
+                ↩️ Undo
+            </button>
             <button id="restart"
-                    class="flex-1 bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
+                    class="bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
                 NEW GAME
             </button>
             <a href="https://www.buymeacoffee.com/nrsteward" target="_blank"
-               class="flex-1 bg-emerald-500 hover:bg-emerald-400 font-bold text-xl py-5 rounded-3xl flex items-center justify-center gap-2 transition">
-                ☕ Support Me
+               class="bg-emerald-500 hover:bg-emerald-400 font-bold text-xl py-5 rounded-3xl flex items-center justify-center gap-2 transition">
+                ☕ Support
             </a>
         </div>
 
@@ -101,9 +104,8 @@
             <div class="bg-zinc-800 rounded-2xl p-6 mb-8 text-left">
                 <h2 class="text-amber-300 font-semibold text-xl mb-5">How to Play</h2>
                 <ul class="space-y-4 text-zinc-300">
-                    <li class="flex items-start gap-3">→ Use <strong class="text-white">arrow keys</strong> or <strong class="text-white">swipe</strong> on mobile</li>
+                    <li class="flex items-start gap-3">→ Use <strong class="text-white">arrow keys</strong> or <strong class="text-white">swipe</strong></li>
                     <li class="flex items-start gap-3">→ Same numbers <strong class="text-white">merge</strong> into their sum</li>
-                    <li class="flex items-start gap-3">→ A new 2 or 4 appears after every move</li>
                     <li class="flex items-start gap-3">→ Reach <span class="text-emerald-400 font-bold">2048</span> to win!</li>
                 </ul>
             </div>
@@ -112,11 +114,32 @@
                     class="w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-black font-bold text-2xl py-6 rounded-3xl transition-all duration-200">
                 START GAME
             </button>
+        </div>
+    </div>
 
-            <p class="text-zinc-500 text-sm mt-8 flex items-center justify-center gap-2">
-                by Sean • nrsteward
-                <img src="avatar.jpg" alt="Sean" class="w-8 h-8 rounded-2xl">
-            </p>
+    <!-- REWARDED UNDO MODAL -->
+    <div id="undo-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
+        <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4 text-center">
+            <h2 class="text-2xl font-bold mb-2">Watch a short ad?</h2>
+            <p class="text-zinc-400 mb-6">Undo your last move for free</p>
+            
+            <div class="bg-zinc-800 rounded-2xl p-6 mb-6">
+                <div class="text-amber-400 text-sm mb-2">AD • 6 seconds</div>
+                <div id="ad-countdown" class="text-5xl font-mono font-bold text-white">6</div>
+                <div class="w-full h-2 bg-zinc-700 rounded-full mt-4 overflow-hidden">
+                    <div id="ad-progress" class="h-full bg-amber-400 w-0 transition-all"></div>
+                </div>
+            </div>
+
+            <button id="watch-ad-btn"
+                    class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
+                Watch Ad &amp; Undo
+            </button>
+            
+            <button id="cancel-ad-btn"
+                    class="mt-4 text-zinc-400 hover:text-white text-sm">
+                Cancel
+            </button>
         </div>
     </div>
 
