@@ -5,15 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>2048 Puzzle</title>
        <!-- Sound support (Web Audio API) -->
-    <script>
-        // Audio Context will be created on first user interaction (to satisfy browser autoplay rules)
-        let audioContext;
-        function initAudio() {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            }
-        }
-    </script>
+   
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="manifest" href="manifest.json">
  <style>
