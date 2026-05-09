@@ -1,10 +1,10 @@
-// ====================== 2048 - WITH REWARDED UNDO ======================
+// ====================== 2048 - WITH PARTICLE EXPLOSIONS ======================
 let grid = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
 let gameOverFlag = false;
 let hasWon = false;
-let previousGrid = null;     // For undo
+let previousGrid = null;
 let undoUsed = false;
 
 const gridEl = document.getElementById("grid");
@@ -86,7 +86,6 @@ for (let i = 0; i < 16; i++) {
 for (let i = 0; i < 16; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
-    tile.style.transition = "all 0.18s cubic-bezier(0.4, 0, 0.2, 1)";
     gridEl.appendChild(tile);
     tiles.push(tile);
 }
@@ -99,59 +98,12 @@ function getTilePosition(index) {
     return { left: `calc(${col * 25}% + 6px)`, top: `calc(${row * 25}% + 6px)` };
 }
 
-function updateDisplay(previousGridState = null) {
-    tiles.forEach((tile, i) => {
-        const value = grid[i];
-        if (value === 0) {
-            tile.style.opacity = "0";
-            return;
-        }
-
-        const pos = getTilePosition(i);
-        tile.style.left = pos.left;
-        tile.style.top = pos.top;
-        tile.style.backgroundColor = getColor(value);
-        tile.style.color = value >= 8 ? "#fff" : "#111";
-        tile.style.fontSize = value >= 1000 ? "1.75rem" : "2.25rem";
-        tile.textContent = value;
-        tile.style.opacity = "1";
-
-        if (previousGridState) {
-            const oldVal = previousGridState[i];
-            if (oldVal === 0 && value > 0) {
-                tile.classList.add("new");
-                setTimeout(() => tile.classList.remove("new"), 320);
-                playSound("spawn");
-           } else if (value > oldVal && oldVal > 0) {
-    tile.classList.add("merged");
-    
-    createMergeExplosion(tile, value);   // ← Add this line
-    
-    setTimeout(() => tile.classList.remove("merged"), 380);
-    playSound("merge", value);
-}
-            }
-        }
-    });
-}
-
-function getColor(value) {
-    const colors = {
-        2: "#f59e0b", 4: "#eab308", 8: "#c2410f", 16: "#b91c1c",
-        32: "#991b1b", 64: "#7e22ce", 128: "#6b21a8", 256: "#581c87",
-        512: "#1e40af", 1024: "#1e3a8a", 2048: "#14b8a6", 4096: "#0f766e"
-    };
-    return colors[value] || "#0c3a3a";
-}
 // ====================== PARTICLE EXPLOSION ======================
 function createMergeExplosion(tileElement, value) {
     if (!tileElement) return;
 
-    const grid = document.getElementById('grid');
-    if (!grid) return;
-
     const rect = tileElement.getBoundingClientRect();
-    const gridRect = grid.getBoundingClientRect();
+    const gridRect = gridEl.getBoundingClientRect();
 
     const centerX = rect.left - gridRect.left + rect.width / 2;
     const centerY = rect.top - gridRect.top + rect.height / 2;
@@ -192,8 +144,7 @@ function createMergeExplosion(tileElement, value) {
             particle.style.animationDuration = '0.55s';
         }
 
-        grid.appendChild(particle);
-
+        gridEl.appendChild(particle);
         setTimeout(() => particle.remove(), 950);
     }
 
@@ -220,6 +171,51 @@ function getTileHue(value) {
     };
     return hueMap[value] || 200;
 }
+
+function updateDisplay(previousGridState = null) {
+    tiles.forEach((tile, i) => {
+        const value = grid[i];
+        if (value === 0) {
+            tile.style.opacity = "0";
+            return;
+        }
+
+        const pos = getTilePosition(i);
+        tile.style.left = pos.left;
+        tile.style.top = pos.top;
+        tile.style.backgroundColor = getColor(value);
+        tile.style.color = value >= 8 ? "#fff" : "#111";
+        tile.style.fontSize = value >= 1000 ? "1.75rem" : "2.25rem";
+        tile.textContent = value;
+        tile.style.opacity = "1";
+
+        if (previousGridState) {
+            const oldVal = previousGridState[i];
+            if (oldVal === 0 && value > 0) {
+                tile.classList.add("new");
+                setTimeout(() => tile.classList.remove("new"), 320);
+                playSound("spawn");
+            } else if (value > oldVal && oldVal > 0) {
+                tile.classList.add("merged");
+                createMergeExplosion(tile, value);   // ← Particle Explosion
+                setTimeout(() => tile.classList.remove("merged"), 380);
+                playSound("merge", value);
+            }
+        }
+    });
+}
+
+function getColor(value) {
+    const colors = {
+        2: "#f59e0b", 4: "#eab308", 8: "#c2410f", 16: "#b91c1c",
+        32: "#991b1b", 64: "#7e22ce", 128: "#6b21a8", 256: "#581c87",
+        512: "#1e40af", 1024: "#1e3a8a", 2048: "#14b8a6", 4096: "#0f766e"
+    };
+    return colors[value] || "#0c3a3a";
+}
+
+// ... (rest of your logic stays the same - addRandomTile, slide, moveLeft, etc.)
+
 function addRandomTile() {
     const empty = grid.map((v, i) => v === 0 ? i : -1).filter(i => i >= 0);
     if (empty.length === 0) return false;
@@ -270,17 +266,16 @@ function saveState() {
 function performUndo() {
     if (!previousGrid || undoUsed) return;
     grid = [...previousGrid];
-    score = Math.max(0, score - 100); // small penalty for undo
+    score = Math.max(0, score - 100);
     undoUsed = true;
     document.getElementById("undo").classList.add("opacity-50", "cursor-not-allowed");
     updateDisplay();
 }
 
-// ====================== MOVE FUNCTION ======================
 function move(direction) {
     if (gameOverFlag || hasWon) return;
 
-    saveState();                    // Save state before moving
+    saveState();
     const previous = [...grid];
     let moved = false;
 
@@ -339,10 +334,7 @@ document.addEventListener("keydown", e => {
 });
 
 let tsX = 0, tsY = 0;
-gridEl.addEventListener("touchstart", e => {
-    tsX = e.changedTouches[0].screenX;
-    tsY = e.changedTouches[0].screenY;
-});
+gridEl.addEventListener("touchstart", e => { tsX = e.changedTouches[0].screenX; tsY = e.changedTouches[0].screenY; });
 gridEl.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].screenX - tsX;
     const dy = e.changedTouches[0].screenY - tsY;
@@ -369,7 +361,6 @@ document.getElementById("undo").addEventListener("click", () => {
     undoModal.classList.remove("hidden");
 });
 
-// ====================== REWARDED UNDO MODAL ======================
 document.getElementById("watch-ad-btn").addEventListener("click", () => {
     const countdownEl = document.getElementById("ad-countdown");
     const progressEl = document.getElementById("ad-progress");
@@ -392,7 +383,6 @@ document.getElementById("cancel-ad-btn").addEventListener("click", () => {
     undoModal.classList.add("hidden");
 });
 
-// ====================== START SCREEN ======================
 document.getElementById("start-button").addEventListener("click", () => {
     initAudio();
     startScreen.style.display = "none";
