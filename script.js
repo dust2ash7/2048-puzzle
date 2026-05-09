@@ -1,10 +1,10 @@
-// ====================== 2048 - WITH PARTICLE EXPLOSIONS ======================
-let grid = Array(16).fill(0);
+// ====================== 2048 - POLISHED V3 (with Win Confetti) ======================
+let board = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
-let gameOverFlag = false;
+let isGameOver = false;
 let hasWon = false;
-let previousGrid = null;
+let previousBoard = null;
 let undoUsed = false;
 
 const gridEl = document.getElementById("grid");
@@ -14,12 +14,11 @@ const startScreen = document.getElementById("start-screen");
 const undoModal = document.getElementById("undo-modal");
 
 let audioContext = null;
+const tiles = [];
 
 // ====================== AUDIO ======================
 function initAudio() {
-    if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    }
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
 }
 
 function playSound(type, value = 0) {
@@ -27,50 +26,123 @@ function playSound(type, value = 0) {
     try {
         const osc = audioContext.createOscillator();
         const gain = audioContext.createGain();
-        osc.connect(gain);
-        gain.connect(audioContext.destination);
+        osc.connect(gain).connect(audioContext.destination);
 
         if (type === "move") {
-            osc.type = "sine"; osc.frequency.value = 160; gain.gain.value = 0.12;
+            osc.type = "sine"; osc.frequency.setValueAtTime(180, audioContext.currentTime);
+            gain.gain.value = 0.15; osc.start(); osc.stop(audioContext.currentTime + 0.08);
         } else if (type === "merge") {
-            osc.type = "triangle"; 
-            osc.frequency.value = 320 + Math.log2(value || 4) * 140; 
-            gain.gain.value = 0.28;
-        } else if (type === "spawn") {
-            osc.type = "sine"; osc.frequency.value = 520; gain.gain.value = 0.1;
+            osc.type = "triangle";
+            osc.frequency.setValueAtTime(420 + Math.log2(value) * 120, audioContext.currentTime);
+            gain.gain.value = 0.35;
+            osc.start(); osc.stop(audioContext.currentTime + 0.25);
         } else if (type === "win") {
-            [820, 1040, 1310, 1650].forEach((f, i) => setTimeout(() => {
-                const o = audioContext.createOscillator();
-                const g = audioContext.createGain();
-                o.type = "sine"; o.frequency.value = f; g.gain.value = 0.22;
-                o.connect(g).connect(audioContext.destination);
-                o.start(); o.stop(audioContext.currentTime + 0.7);
-            }, i * 70));
-            return;
+            const notes = [880, 1100, 1320, 1760];
+            notes.forEach((freq, i) => {
+                setTimeout(() => {
+                    const o = audioContext.createOscillator();
+                    const g = audioContext.createGain();
+                    o.type = "sine"; o.frequency.value = freq;
+                    g.gain.value = 0.3;
+                    o.connect(g).connect(audioContext.destination);
+                    o.start(); o.stop(audioContext.currentTime + 0.6);
+                }, i * 80);
+            });
         } else if (type === "gameover") {
-            [480, 360, 240].forEach((f, i) => setTimeout(() => {
+            [520, 420, 280].forEach((f, i) => setTimeout(() => {
                 const o = audioContext.createOscillator();
                 const g = audioContext.createGain();
-                o.type = "sawtooth"; o.frequency.value = f; g.gain.value = 0.2;
+                o.type = "sawtooth"; o.frequency.value = f; g.gain.value = 0.25;
                 o.connect(g).connect(audioContext.destination);
-                o.start(); o.stop(audioContext.currentTime + 0.95);
-            }, i * 110));
-            return;
+                o.start(); o.stop(audioContext.currentTime + 0.8);
+            }, i * 120));
         }
-
-        osc.start();
-        osc.stop(audioContext.currentTime + 0.4);
     } catch (e) {}
 }
 
-// ====================== GRID SETUP ======================
+// ====================== CONFETTI ======================
+let confettiCanvas = null;
+let confettiCtx = null;
+
+function initConfetti() {
+    confettiCanvas = document.createElement("canvas");
+    confettiCanvas.style.position = "fixed";
+    confettiCanvas.style.top = "0";
+    confettiCanvas.style.left = "0";
+    confettiCanvas.style.width = "100%";
+    confettiCanvas.style.height = "100%";
+    confettiCanvas.style.pointerEvents = "none";
+    confettiCanvas.style.zIndex = "300";
+    document.body.appendChild(confettiCanvas);
+    confettiCtx = confettiCanvas.getContext("2d");
+    confettiCanvas.width = window.innerWidth;
+    confettiCanvas.height = window.innerHeight;
+}
+
+const confettiPieces = [];
+
+class Confetto {
+    constructor() {
+        this.x = Math.random() * confettiCanvas.width;
+        this.y = Math.random() * confettiCanvas.height - confettiCanvas.height;
+        this.size = Math.random() * 12 + 8;
+        this.speed = Math.random() * 6 + 4;
+        this.angle = Math.random() * 360;
+        this.angleSpeed = Math.random() * 0.3 - 0.15;
+        this.color = `hsl(${Math.random() * 360}, 90%, 65%)`;
+        this.shape = Math.random() > 0.5 ? "circle" : "rect";
+    }
+    update() {
+        this.y += this.speed;
+        this.angle += this.angleSpeed;
+        this.speed += 0.08;
+    }
+    draw() {
+        confettiCtx.save();
+        confettiCtx.translate(this.x, this.y);
+        confettiCtx.rotate(this.angle * Math.PI / 180);
+        confettiCtx.fillStyle = this.color;
+        if (this.shape === "circle") {
+            confettiCtx.beginPath();
+            confettiCtx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+            confettiCtx.fill();
+        } else {
+            confettiCtx.fillRect(-this.size/2, -this.size/2, this.size, this.size * 0.6);
+        }
+        confettiCtx.restore();
+    }
+}
+
+function launchConfetti(duration = 4500) {
+    if (!confettiCanvas) initConfetti();
+    
+    for (let i = 0; i < 280; i++) {
+        confettiPieces.push(new Confetto());
+    }
+
+    const startTime = Date.now();
+    function animate() {
+        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        
+        for (let i = confettiPieces.length - 1; i >= 0; i--) {
+            const c = confettiPieces[i];
+            c.update();
+            c.draw();
+            if (c.y > confettiCanvas.height) confettiPieces.splice(i, 1);
+        }
+
+        if (Date.now() - startTime < duration && confettiPieces.length > 0) {
+            requestAnimationFrame(animate);
+        } else {
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        }
+    }
+    animate();
+}
+
+// ====================== SETUP ======================
 gridEl.style.position = "relative";
-gridEl.style.width = "100%";
-gridEl.style.aspectRatio = "1 / 1";
 
-const tiles = [];
-
-// Background cells
 for (let i = 0; i < 16; i++) {
     const bg = document.createElement("div");
     bg.className = "absolute bg-zinc-900 rounded-3xl";
@@ -82,7 +154,6 @@ for (let i = 0; i < 16; i++) {
     gridEl.appendChild(bg);
 }
 
-// Tile elements
 for (let i = 0; i < 16; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
@@ -92,204 +163,161 @@ for (let i = 0; i < 16; i++) {
 
 bestEl.textContent = bestScore;
 
-function getTilePosition(index) {
-    const row = Math.floor(index / 4);
-    const col = index % 4;
-    return { left: `calc(${col * 25}% + 6px)`, top: `calc(${row * 25}% + 6px)` };
-}
-
 // ====================== PARTICLE EXPLOSION ======================
 function createMergeExplosion(tileElement, value) {
     if (!tileElement) return;
-
     const rect = tileElement.getBoundingClientRect();
     const gridRect = gridEl.getBoundingClientRect();
 
     const centerX = rect.left - gridRect.left + rect.width / 2;
     const centerY = rect.top - gridRect.top + rect.height / 2;
 
-    const intensity = Math.min(2.2, Math.log2(value) / 5);
-    const particleCount = Math.floor(14 + intensity * 18);
+    const intensity = Math.min(3.2, Math.log2(value) / 4.5);
+    const count = Math.floor(18 + intensity * 22);
     const baseHue = getTileHue(value);
 
-    for (let i = 0; i < particleCount; i++) {
-        const particle = document.createElement('div');
-        particle.className = 'particle';
+    for (let i = 0; i < count; i++) {
+        const p = document.createElement("div");
+        p.className = "particle";
 
-        const hue = (baseHue + (Math.random() * 45 - 22)) % 360;
-        const saturation = 85 + Math.random() * 15;
-        const lightness = 65 + Math.random() * 25;
-        
-        particle.style.backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-        particle.style.left = `${centerX}px`;
-        particle.style.top = `${centerY}px`;
+        const hue = (baseHue + (Math.random() * 50 - 25)) % 360;
+        p.style.backgroundColor = `hsl(${hue}, 92%, ${65 + Math.random() * 25}%)`;
+        p.style.left = `${centerX}px`;
+        p.style.top = `${centerY}px`;
 
         const angle = Math.random() * Math.PI * 2;
-        const velocity = 45 + Math.random() * 110 * intensity;
-        const dx = Math.cos(angle) * velocity;
-        const dy = Math.sin(angle) * velocity - (intensity * 15);
+        const vel = 50 + Math.random() * 135 * intensity;
+        const dx = Math.cos(angle) * vel;
+        const dy = Math.sin(angle) * vel - intensity * 22;
 
-        particle.style.setProperty('--dx', `${dx}px`);
-        particle.style.setProperty('--dy', `${dy}px`);
+        p.style.setProperty("--dx", `${dx}px`);
+        p.style.setProperty("--dy", `${dy}px`);
 
-        const size = 7 + Math.random() * (9 + intensity * 4);
-        particle.style.width = `${size}px`;
-        particle.style.height = `${size}px`;
+        const size = 6 + Math.random() * (11 + intensity * 5);
+        p.style.width = `${size}px`;
+        p.style.height = `${size}px`;
 
-        particle.style.animationDelay = `${Math.random() * 90}ms`;
+        p.style.animationDelay = `${Math.random() * 70}ms`;
 
-        if (Math.random() < 0.12) {
-            particle.style.width = `${size * 1.8}px`;
-            particle.style.height = `${size * 1.8}px`;
-            particle.style.animationDuration = '0.55s';
+        if (Math.random() < 0.15) {
+            p.style.width = `${size * 2.1}px`;
+            p.style.height = `${size * 2.1}px`;
+            p.style.animationDuration = "0.58s";
         }
 
-        gridEl.appendChild(particle);
-        setTimeout(() => particle.remove(), 950);
+        gridEl.appendChild(p);
+        setTimeout(() => p.remove(), 1150);
     }
 
-    // Extra pop for big tiles
-    if (value >= 128) {
-        tileElement.style.transition = 'transform 80ms ease-out, box-shadow 120ms';
-        tileElement.style.transform = 'scale(1.28)';
-        tileElement.style.boxShadow = `0 0 40px hsl(${baseHue}, 90%, 70%)`;
-        
+    if (value >= 256) {
+        tileElement.style.transition = "transform 90ms, box-shadow 160ms";
+        tileElement.style.transform = "scale(1.38)";
+        tileElement.style.boxShadow = `0 0 55px hsl(${baseHue}, 95%, 78%)`;
         setTimeout(() => {
-            tileElement.style.transform = 'scale(1)';
-            tileElement.style.boxShadow = '';
-        }, 140);
+            tileElement.style.transform = "scale(1)";
+            tileElement.style.boxShadow = "";
+        }, 170);
     }
 }
 
 function getTileHue(value) {
-    const hueMap = {
-        2: 200, 4: 195,
-        8: 38, 16: 32, 32: 18,
-        64: 0, 128: 260,
-        256: 275, 512: 290,
-        1024: 310, 2048: 330, 4096: 350
-    };
-    return hueMap[value] || 200;
+    const map = {2:200,4:195,8:38,16:32,32:18,64:0,128:260,256:275,512:290,1024:310,2048:330,4096:350};
+    return map[value] || 200;
 }
 
-function updateDisplay(previousGridState = null) {
-    tiles.forEach((tile, i) => {
-        const value = grid[i];
-        if (value === 0) {
-            tile.style.opacity = "0";
-            return;
-        }
-
-        const pos = getTilePosition(i);
-        tile.style.left = pos.left;
-        tile.style.top = pos.top;
-        tile.style.backgroundColor = getColor(value);
-        tile.style.color = value >= 8 ? "#fff" : "#111";
-        tile.style.fontSize = value >= 1000 ? "1.75rem" : "2.25rem";
-        tile.textContent = value;
-        tile.style.opacity = "1";
-
-        if (previousGridState) {
-            const oldVal = previousGridState[i];
-            if (oldVal === 0 && value > 0) {
-                tile.classList.add("new");
-                setTimeout(() => tile.classList.remove("new"), 320);
-                playSound("spawn");
-            } else if (value > oldVal && oldVal > 0) {
-                tile.classList.add("merged");
-                createMergeExplosion(tile, value);   // ← Particle Explosion
-                setTimeout(() => tile.classList.remove("merged"), 380);
-                playSound("merge", value);
-            }
-        }
-    });
-}
-
+// ====================== CORE ======================
 function getColor(value) {
     const colors = {
-        2: "#f59e0b", 4: "#eab308", 8: "#c2410f", 16: "#b91c1c",
-        32: "#991b1b", 64: "#7e22ce", 128: "#6b21a8", 256: "#581c87",
-        512: "#1e40af", 1024: "#1e3a8a", 2048: "#14b8a6", 4096: "#0f766e"
+        2:"#f59e0b", 4:"#eab308", 8:"#c2410f", 16:"#b91c1c",
+        32:"#991b1b", 64:"#7e22ce", 128:"#6b21a8", 256:"#581c87",
+        512:"#1e40af", 1024:"#1e3a8a", 2048:"#14b8a6", 4096:"#0f766e"
     };
     return colors[value] || "#0c3a3a";
 }
 
-// ... (rest of your logic stays the same - addRandomTile, slide, moveLeft, etc.)
+function updateDisplay(oldBoard = null) {
+    tiles.forEach((tile, i) => {
+        const val = board[i];
+        if (val === 0) { tile.style.opacity = "0"; return; }
 
-function addRandomTile() {
-    const empty = grid.map((v, i) => v === 0 ? i : -1).filter(i => i >= 0);
-    if (empty.length === 0) return false;
-    grid[empty[Math.floor(Math.random() * empty.length)]] = Math.random() < 0.9 ? 2 : 4;
-    return true;
+        tile.style.left = `calc(${(i % 4) * 25}% + 6px)`;
+        tile.style.top = `calc(${Math.floor(i / 4) * 25}% + 6px)`;
+        tile.style.backgroundColor = getColor(val);
+        tile.style.color = val >= 8 ? "#fff" : "#111";
+        tile.style.fontSize = val >= 1000 ? "1.7rem" : "2.25rem";
+        tile.textContent = val;
+        tile.style.opacity = "1";
+
+        if (oldBoard) {
+            const oldVal = oldBoard[i];
+            if (oldVal === 0 && val > 0) {
+                tile.classList.add("new");
+                setTimeout(() => tile.classList.remove("new"), 340);
+            } else if (val > oldVal && oldVal > 0) {
+                tile.classList.add("merged");
+                createMergeExplosion(tile, val);
+                setTimeout(() => tile.classList.remove("merged"), 400);
+                playSound("merge", val);
+            }
+        }
+    });
+    scoreEl.textContent = score;
 }
 
-function slide(row) {
-    let newRow = row.filter(val => val !== 0);
-    for (let i = 0; i < newRow.length - 1; i++) {
-        if (newRow[i] === newRow[i + 1]) {
-            newRow[i] *= 2;
-            score += newRow[i];
-            newRow.splice(i + 1, 1);
+// Proper slide with merge-once rule
+function slideLine(line) {
+    let newLine = line.filter(n => n !== 0);
+    let i = 0;
+    while (i < newLine.length - 1) {
+        if (newLine[i] === newLine[i + 1]) {
+            newLine[i] *= 2;
+            score += newLine[i];
+            newLine.splice(i + 1, 1);
+        } else {
             i++;
         }
     }
-    while (newRow.length < 4) newRow.push(0);
-    return newRow;
-}
-
-function moveLeft() {
-    let moved = false;
-    for (let r = 0; r < 4; r++) {
-        const start = r * 4;
-        const row = grid.slice(start, start + 4);
-        const newRow = slide(row);
-        if (row.join() !== newRow.join()) moved = true;
-        for (let i = 0; i < 4; i++) grid[start + i] = newRow[i];
-    }
-    return moved;
-}
-
-function rotateGrid() {
-    const newGrid = Array(16).fill(0);
-    for (let i = 0; i < 16; i++) {
-        const row = Math.floor(i / 4);
-        const col = i % 4;
-        newGrid[col * 4 + (3 - row)] = grid[i];
-    }
-    grid = newGrid;
-}
-
-function saveState() {
-    previousGrid = [...grid];
-}
-
-function performUndo() {
-    if (!previousGrid || undoUsed) return;
-    grid = [...previousGrid];
-    score = Math.max(0, score - 100);
-    undoUsed = true;
-    document.getElementById("undo").classList.add("opacity-50", "cursor-not-allowed");
-    updateDisplay();
+    while (newLine.length < 4) newLine.push(0);
+    return newLine;
 }
 
 function move(direction) {
-    if (gameOverFlag || hasWon) return;
+    if (isGameOver || hasWon) return;
 
-    saveState();
-    const previous = [...grid];
+    previousBoard = [...board];
+    const oldBoard = [...board];
     let moved = false;
+    let temp = [...board];
 
-    if (direction === "Left") moved = moveLeft();
-    else if (direction === "Right") { rotateGrid(); rotateGrid(); moved = moveLeft(); rotateGrid(); rotateGrid(); }
-    else if (direction === "Up")    { rotateGrid(); rotateGrid(); rotateGrid(); moved = moveLeft(); rotateGrid(); }
-    else if (direction === "Down")  { rotateGrid(); moved = moveLeft(); rotateGrid(); rotateGrid(); rotateGrid(); }
+    if (direction === "Left" || direction === "Right") {
+        for (let r = 0; r < 4; r++) {
+            const start = r * 4;
+            let row = temp.slice(start, start + 4);
+            if (direction === "Right") row = row.reverse();
+            const newRow = slideLine(row);
+            if (direction === "Right") newRow.reverse();
+            if (row.join() !== newRow.join()) moved = true;
+            for (let i = 0; i < 4; i++) temp[start + i] = newRow[i];
+        }
+    } else {
+        for (let c = 0; c < 4; c++) {
+            let col = [temp[c], temp[c+4], temp[c+8], temp[c+12]];
+            if (direction === "Down") col = col.reverse();
+            const newCol = slideLine(col);
+            if (direction === "Down") newCol.reverse();
+            if (col.join() !== newCol.join()) moved = true;
+            for (let i = 0; i < 4; i++) temp[i*4 + c] = newCol[i];
+        }
+    }
 
     if (moved) {
+        board = temp;
         playSound("move");
-        updateDisplay(previous);
+        updateDisplay(oldBoard);
+
         setTimeout(() => {
             addRandomTile();
-            updateDisplay(previous);
+            updateDisplay(oldBoard);
             checkWin();
             checkGameOver();
 
@@ -298,36 +326,86 @@ function move(direction) {
                 localStorage.setItem("best2048", bestScore);
                 bestEl.textContent = bestScore;
             }
-        }, 180);
+        }, 160);
     }
+}
+
+function addRandomTile() {
+    const empty = board.map((v, i) => v === 0 ? i : null).filter(i => i !== null);
+    if (empty.length === 0) return;
+    board[empty[Math.floor(Math.random() * empty.length)]] = Math.random() < 0.9 ? 2 : 4;
 }
 
 function checkWin() {
     if (hasWon) return;
-    if (grid.includes(2048)) {
+    if (board.includes(2048)) {
         hasWon = true;
         playSound("win");
-        setTimeout(() => alert("🎉 You Win!\n\nYou reached 2048!"), 300);
+        launchConfetti(5000);
+        showWinModal();
     }
 }
 
 function checkGameOver() {
-    if (grid.includes(0)) return;
+    if (board.includes(0)) return;
     for (let i = 0; i < 16; i++) {
-        const v = grid[i];
-        if (v === 0) continue;
+        const val = board[i];
         const r = Math.floor(i / 4), c = i % 4;
-        if (c < 3 && grid[i + 1] === v) return;
-        if (r < 3 && grid[i + 4] === v) return;
+        if (c < 3 && board[i+1] === val) return;
+        if (r < 3 && board[i+4] === val) return;
     }
-    gameOverFlag = true;
+    isGameOver = true;
     playSound("gameover");
-    setTimeout(() => alert(`Game Over!\nFinal Score: ${score}`), 400);
+    showGameOverModal();
 }
 
-// ====================== CONTROLS ======================
+// ====================== MODALS ======================
+function showWinModal() {
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black/80 flex items-center justify-center z-[200]";
+    modal.innerHTML = `
+        <div class="bg-zinc-900 rounded-3xl p-10 text-center max-w-xs w-full mx-4">
+            <h2 class="text-5xl mb-4">🎉 You Win!</h2>
+            <p class="text-2xl text-amber-400 mb-8">You reached 2048</p>
+            <button onclick="this.closest('.fixed').remove(); restartGame()" 
+                    class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-6 rounded-3xl text-xl">
+                Play Again
+            </button>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+function showGameOverModal() {
+    const modal = document.createElement("div");
+    modal.className = "fixed inset-0 bg-black/80 flex items-center justify-center z-[200]";
+    modal.innerHTML = `
+        <div class="bg-zinc-900 rounded-3xl p-10 text-center max-w-xs w-full mx-4">
+            <h2 class="text-4xl mb-4">Game Over</h2>
+            <p class="text-xl text-zinc-400 mb-8">Final Score: <span class="text-white font-bold">${score}</span></p>
+            <button onclick="this.closest('.fixed').remove(); restartGame()" 
+                    class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-6 rounded-3xl text-xl">
+                Try Again
+            </button>
+        </div>`;
+    document.body.appendChild(modal);
+}
+
+function restartGame() {
+    board = Array(16).fill(0);
+    score = 0;
+    isGameOver = false;
+    hasWon = false;
+    undoUsed = false;
+    previousBoard = null;
+    document.getElementById("undo").classList.remove("opacity-50", "cursor-not-allowed");
+    addRandomTile();
+    addRandomTile();
+    updateDisplay();
+}
+
+// ====================== INPUT & BUTTONS ======================
 document.addEventListener("keydown", e => {
-    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
         e.preventDefault();
         move(e.key.replace("Arrow", ""));
     }
@@ -338,50 +416,39 @@ gridEl.addEventListener("touchstart", e => { tsX = e.changedTouches[0].screenX; 
 gridEl.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].screenX - tsX;
     const dy = e.changedTouches[0].screenY - tsY;
-    if (Math.abs(dx) < 40 && Math.abs(dy) < 40) return;
+    if (Math.abs(dx) < 50 && Math.abs(dy) < 50) return;
     move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "Right" : "Left") : (dy > 0 ? "Down" : "Up"));
 });
 
-// ====================== BUTTONS ======================
-document.getElementById("restart").addEventListener("click", () => {
-    grid = Array(16).fill(0);
-    score = 0;
-    gameOverFlag = false;
-    hasWon = false;
-    undoUsed = false;
-    previousGrid = null;
-    document.getElementById("undo").classList.remove("opacity-50", "cursor-not-allowed");
-    addRandomTile();
-    addRandomTile();
-    updateDisplay();
-});
+document.getElementById("restart").addEventListener("click", restartGame);
 
 document.getElementById("undo").addEventListener("click", () => {
-    if (undoUsed || gameOverFlag || !previousGrid) return;
+    if (undoUsed || !previousBoard || isGameOver) return;
     undoModal.classList.remove("hidden");
 });
 
 document.getElementById("watch-ad-btn").addEventListener("click", () => {
-    const countdownEl = document.getElementById("ad-countdown");
-    const progressEl = document.getElementById("ad-progress");
     let time = 6;
-
-    const timer = setInterval(() => {
-        time--;
-        countdownEl.textContent = time;
-        progressEl.style.width = `${(6 - time) * 16.66}%`;
-
+    const countdown = document.getElementById("ad-countdown");
+    const progress = document.getElementById("ad-progress");
+    const interval = setInterval(() => {
+        time--; countdown.textContent = time;
+        progress.style.width = `${(6-time)*16.67}%`;
         if (time <= 0) {
-            clearInterval(timer);
+            clearInterval(interval);
             undoModal.classList.add("hidden");
-            performUndo();
+            if (previousBoard) {
+                board = [...previousBoard];
+                score = Math.max(0, score - 80);
+                undoUsed = true;
+                document.getElementById("undo").classList.add("opacity-50", "cursor-not-allowed");
+                updateDisplay();
+            }
         }
     }, 1000);
 });
 
-document.getElementById("cancel-ad-btn").addEventListener("click", () => {
-    undoModal.classList.add("hidden");
-});
+document.getElementById("cancel-ad-btn").addEventListener("click", () => undoModal.classList.add("hidden"));
 
 document.getElementById("start-button").addEventListener("click", () => {
     initAudio();
