@@ -20,7 +20,7 @@
             border-radius: 1.5rem;
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
                         inset 0 2px 4px rgb(255 255 255 / 0.2);
-            transition: none;
+            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
             overflow: hidden;
         }
 
@@ -47,30 +47,32 @@
         .tile.new {
             animation: tilePopNew 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
         }
-        .particle {
-    position: absolute;
-    pointer-events: none;
-    z-index: 30;
-    border-radius: 50%;
-    box-shadow: 0 0 12px currentColor,
-                0 0 20px rgba(255,255,255,0.6);
-    animation: particleBurst 0.75s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
-    will-change: transform, opacity;
-}
 
-@keyframes particleBurst {
-    0% {
-        transform: scale(1) translate(0, 0);
-        opacity: 0.95;
-    }
-    25% {
-        transform: scale(1.1);
-    }
-    100% {
-        transform: scale(0.2) translate(var(--dx), var(--dy));
-        opacity: 0;
-    }
-}
+        /* ==================== PARTICLE EXPLOSION ==================== */
+        .particle {
+            position: absolute;
+            pointer-events: none;
+            z-index: 30;
+            border-radius: 50%;
+            box-shadow: 0 0 12px currentColor,
+                        0 0 20px rgba(255,255,255,0.6);
+            animation: particleBurst 0.75s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
+            will-change: transform, opacity;
+        }
+
+        @keyframes particleBurst {
+            0% {
+                transform: scale(1) translate(0, 0);
+                opacity: 0.95;
+            }
+            25% {
+                transform: scale(1.1);
+            }
+            100% {
+                transform: scale(0.2) translate(var(--dx), var(--dy));
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center font-sans">
@@ -157,7 +159,7 @@
 
             <button id="watch-ad-btn"
                     class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
-                Watch Ad &amp; Undo
+                Watch Ad & Undo
             </button>
             
             <button id="cancel-ad-btn"
