@@ -1,4 +1,4 @@
-// ====================== 2048 - FINAL V4 (Premium Sounds + Particles + Confetti) ======================
+// ====================== 2048 - V5 (Final Polish) ======================
 let board = Array(16).fill(0);
 let score = 0;
 let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
@@ -29,42 +29,34 @@ function playSound(type, value = 0) {
             const gain = audioContext.createGain();
             osc.type = "sine";
             osc.frequency.setValueAtTime(260, audioContext.currentTime);
-            gain.gain.setValueAtTime(0.18, audioContext.currentTime);
+            gain.gain.setValueAtTime(0.16, audioContext.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
             osc.connect(gain).connect(audioContext.destination);
-            osc.start();
-            osc.stop(audioContext.currentTime + 0.12);
+            osc.start(); osc.stop(audioContext.currentTime + 0.12);
         } 
         else if (type === "new") {
             const noise = audioContext.createBufferSource();
-            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.09, audioContext.sampleRate);
+            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
             const data = buffer.getChannelData(0);
             for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
             noise.buffer = buffer;
             const filter = audioContext.createBiquadFilter();
-            filter.type = "lowpass";
-            filter.frequency.value = 1400;
+            filter.type = "lowpass"; filter.frequency.value = 1350;
             const gain = audioContext.createGain();
-            gain.gain.setValueAtTime(0.4, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.22);
+            gain.gain.setValueAtTime(0.38, audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
             noise.connect(filter).connect(gain).connect(audioContext.destination);
             noise.start();
         } 
         else if (type === "merge") {
-            const base = 380 + Math.log2(Math.max(value, 4)) * 125;
-            const osc1 = audioContext.createOscillator();
-            const gain1 = audioContext.createGain();
-            osc1.type = "triangle";
-            osc1.frequency.setValueAtTime(base, audioContext.currentTime);
-            gain1.gain.setValueAtTime(0.45, audioContext.currentTime);
-            gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.48);
+            const base = 380 + Math.log2(Math.max(value, 4)) * 130;
+            const osc1 = audioContext.createOscillator(); const gain1 = audioContext.createGain();
+            osc1.type = "triangle"; osc1.frequency.setValueAtTime(base, audioContext.currentTime);
+            gain1.gain.setValueAtTime(0.45, audioContext.currentTime); gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
 
-            const osc2 = audioContext.createOscillator();
-            const gain2 = audioContext.createGain();
-            osc2.type = "sine";
-            osc2.frequency.setValueAtTime(base * 1.52, audioContext.currentTime);
-            gain2.gain.setValueAtTime(0.28, audioContext.currentTime);
-            gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.38);
+            const osc2 = audioContext.createOscillator(); const gain2 = audioContext.createGain();
+            osc2.type = "sine"; osc2.frequency.setValueAtTime(base * 1.5, audioContext.currentTime);
+            gain2.gain.setValueAtTime(0.26, audioContext.currentTime); gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
 
             osc1.connect(gain1).connect(audioContext.destination);
             osc2.connect(gain2).connect(audioContext.destination);
@@ -73,55 +65,44 @@ function playSound(type, value = 0) {
             osc2.stop(audioContext.currentTime + 0.45);
         } 
         else if (type === "win") {
-            [920, 1240, 1480, 1760, 1980].forEach((f, i) => {
-                setTimeout(() => {
-                    const o = audioContext.createOscillator();
-                    const g = audioContext.createGain();
-                    o.type = "sine"; o.frequency.value = f;
-                    g.gain.value = 0.4;
-                    g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.9);
-                    o.connect(g).connect(audioContext.destination);
-                    o.start(); o.stop(audioContext.currentTime + 1);
-                }, i * 85);
-            });
+            [920, 1240, 1480, 1760, 1980].forEach((f, i) => setTimeout(() => {
+                const o = audioContext.createOscillator();
+                const g = audioContext.createGain();
+                o.type = "sine"; o.frequency.value = f;
+                g.gain.value = 0.4; g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.9);
+                o.connect(g).connect(audioContext.destination);
+                o.start(); o.stop(audioContext.currentTime + 1);
+            }, i * 85));
         } 
         else if (type === "gameover") {
-            [580, 460, 360, 260].forEach((f, i) => {
-                setTimeout(() => {
-                    const o = audioContext.createOscillator();
-                    const g = audioContext.createGain();
-                    o.type = "sawtooth"; o.frequency.value = f;
-                    g.gain.value = 0.32;
-                    g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1.3);
-                    o.connect(g).connect(audioContext.destination);
-                    o.start(); o.stop(audioContext.currentTime + 1.4);
-                }, i * 180);
-            });
+            [580, 460, 360, 260].forEach((f, i) => setTimeout(() => {
+                const o = audioContext.createOscillator();
+                const g = audioContext.createGain();
+                o.type = "sawtooth"; o.frequency.value = f;
+                g.gain.value = 0.32; g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1.3);
+                o.connect(g).connect(audioContext.destination);
+                o.start(); o.stop(audioContext.currentTime + 1.4);
+            }, i * 180));
         }
     } catch (e) {}
 }
 
 // ====================== CONFETTI ======================
-let confettiCanvas = null;
-let confettiCtx = null;
+let confettiCanvas = null, confettiCtx = null;
 const confettiPieces = [];
 
 class Confetto {
     constructor() {
-        this.x = Math.random() * (confettiCanvas ? confettiCanvas.width : window.innerWidth);
-        this.y = Math.random() * -300;
+        this.x = Math.random() * window.innerWidth;
+        this.y = Math.random() * -400;
         this.size = Math.random() * 14 + 9;
         this.speed = Math.random() * 8 + 6;
         this.angle = Math.random() * 360;
         this.angleSpeed = (Math.random() - 0.5) * 0.8;
-        this.color = `hsl(${Math.random() * 360}, 95%, 68%)`;
+        this.color = `hsl(${Math.random()*360}, 95%, 68%)`;
         this.shape = Math.random() > 0.5 ? "circle" : "rect";
     }
-    update() {
-        this.y += this.speed;
-        this.angle += this.angleSpeed;
-        this.speed += 0.1;
-    }
+    update() { this.y += this.speed; this.angle += this.angleSpeed; this.speed += 0.1; }
     draw() {
         if (!confettiCtx) return;
         confettiCtx.save();
@@ -129,11 +110,9 @@ class Confetto {
         confettiCtx.rotate(this.angle * Math.PI / 180);
         confettiCtx.fillStyle = this.color;
         if (this.shape === "circle") {
-            confettiCtx.beginPath();
-            confettiCtx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
-            confettiCtx.fill();
+            confettiCtx.beginPath(); confettiCtx.arc(0, 0, this.size/2, 0, Math.PI*2); confettiCtx.fill();
         } else {
-            confettiCtx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size * 0.6);
+            confettiCtx.fillRect(-this.size/2, -this.size/2, this.size, this.size*0.6);
         }
         confettiCtx.restore();
     }
@@ -153,15 +132,12 @@ function launchConfetti(duration = 6500) {
     const start = Date.now();
     function animate() {
         confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-        for (let i = confettiPieces.length - 1; i >= 0; i--) {
+        for (let i = confettiPieces.length-1; i >= 0; i--) {
             const c = confettiPieces[i];
-            c.update();
-            c.draw();
+            c.update(); c.draw();
             if (c.y > confettiCanvas.height + 100) confettiPieces.splice(i, 1);
         }
-        if (Date.now() - start < duration && confettiPieces.length > 0) {
-            requestAnimationFrame(animate);
-        }
+        if (Date.now() - start < duration && confettiPieces.length > 0) requestAnimationFrame(animate);
     }
     animate();
 }
@@ -169,19 +145,17 @@ function launchConfetti(duration = 6500) {
 // ====================== SETUP ======================
 gridEl.style.position = "relative";
 
-// Background cells
 for (let i = 0; i < 16; i++) {
     const bg = document.createElement("div");
     bg.className = "absolute bg-zinc-900 rounded-3xl";
     bg.style.width = "calc(25% - 12px)";
     bg.style.height = "calc(25% - 12px)";
-    const r = Math.floor(i / 4), c = i % 4;
-    bg.style.left = `calc(${c * 25}% + 6px)`;
-    bg.style.top = `calc(${r * 25}% + 6px)`;
+    const r = Math.floor(i/4), c = i%4;
+    bg.style.left = `calc(${c*25}% + 6px)`;
+    bg.style.top = `calc(${r*25}% + 6px)`;
     gridEl.appendChild(bg);
 }
 
-// Tile elements
 for (let i = 0; i < 16; i++) {
     const tile = document.createElement("div");
     tile.className = "tile";
@@ -191,7 +165,7 @@ for (let i = 0; i < 16; i++) {
 
 bestEl.textContent = bestScore;
 
-// ====================== MERGE PARTICLES ======================
+// ====================== PARTICLES ======================
 function createMergeExplosion(tileElement, value) {
     if (!tileElement) return;
     const rect = tileElement.getBoundingClientRect();
@@ -199,8 +173,8 @@ function createMergeExplosion(tileElement, value) {
     const cx = rect.left - gridRect.left + rect.width / 2;
     const cy = rect.top - gridRect.top + rect.height / 2;
 
-    const intensity = Math.min(3.6, Math.log2(value) / 4.2);
-    const count = Math.floor(22 + intensity * 26);
+    const intensity = Math.min(3.8, Math.log2(value) / 4);
+    const count = Math.floor(24 + intensity * 26);
     const baseHue = getTileHue(value);
 
     for (let i = 0; i < count; i++) {
@@ -212,27 +186,24 @@ function createMergeExplosion(tileElement, value) {
         p.style.top = `${cy}px`;
 
         const angle = Math.random() * Math.PI * 2;
-        const vel = 60 + Math.random() * 145 * intensity;
+        const vel = 65 + Math.random() * 150 * intensity;
         p.style.setProperty("--dx", `${Math.cos(angle) * vel}px`);
-        p.style.setProperty("--dy", `${Math.sin(angle) * vel - intensity * 28}px`);
+        p.style.setProperty("--dy", `${Math.sin(angle) * vel - intensity * 30}px`);
 
-        const sz = 7 + Math.random() * (13 + intensity * 6);
+        const sz = 7 + Math.random() * (14 + intensity * 6);
         p.style.width = `${sz}px`;
         p.style.height = `${sz}px`;
-        p.style.animationDelay = `${Math.random() * 60}ms`;
+        p.style.animationDelay = `${Math.random() * 55}ms`;
 
         gridEl.appendChild(p);
-        setTimeout(() => p.remove(), 1250);
+        setTimeout(() => p.remove(), 1300);
     }
 
     if (value >= 256) {
-        tileElement.style.transition = "transform 90ms ease-out, box-shadow 170ms";
-        tileElement.style.transform = "scale(1.42)";
-        tileElement.style.boxShadow = `0 0 65px hsl(${baseHue}, 95%, 82%)`;
-        setTimeout(() => {
-            tileElement.style.transform = "scale(1)";
-            tileElement.style.boxShadow = "";
-        }, 190);
+        tileElement.style.transition = "transform 85ms ease-out, box-shadow 180ms";
+        tileElement.style.transform = "scale(1.45)";
+        tileElement.style.boxShadow = `0 0 70px hsl(${baseHue}, 95%, 85%)`;
+        setTimeout(() => { tileElement.style.transform = "scale(1)"; tileElement.style.boxShadow = ""; }, 200);
     }
 }
 
@@ -247,14 +218,14 @@ function getColor(v) {
     return c[v] || "#0c3a3a";
 }
 
-// ====================== GAME CORE ======================
+// ====================== GAME LOGIC ======================
 function updateDisplay(oldBoard = null) {
     tiles.forEach((tile, i) => {
         const val = board[i];
         if (val === 0) { tile.style.opacity = "0"; return; }
 
-        tile.style.left = `calc(${(i % 4) * 25}% + 6px)`;
-        tile.style.top = `calc(${Math.floor(i / 4) * 25}% + 6px)`;
+        tile.style.left = `calc(${(i%4)*25}% + 6px)`;
+        tile.style.top = `calc(${Math.floor(i/4)*25}% + 6px)`;
         tile.style.backgroundColor = getColor(val);
         tile.style.color = val >= 8 ? "#fff" : "#111";
         tile.style.fontSize = val >= 1000 ? "1.65rem" : "2.25rem";
@@ -282,10 +253,10 @@ function slideLine(line) {
     let arr = line.filter(x => x !== 0);
     let i = 0;
     while (i < arr.length - 1) {
-        if (arr[i] === arr[i + 1]) {
+        if (arr[i] === arr[i+1]) {
             arr[i] *= 2;
             score += arr[i];
-            arr.splice(i + 1, 1);
+            arr.splice(i+1, 1);
         } else i++;
     }
     while (arr.length < 4) arr.push(0);
@@ -301,8 +272,8 @@ function move(dir) {
 
     if (dir === "Left" || dir === "Right") {
         for (let r = 0; r < 4; r++) {
-            let start = r * 4;
-            let row = temp.slice(start, start + 4);
+            let start = r*4;
+            let row = temp.slice(start, start+4);
             if (dir === "Right") row = row.reverse();
             let newRow = slideLine(row);
             if (dir === "Right") newRow = newRow.reverse();
@@ -311,12 +282,12 @@ function move(dir) {
         }
     } else {
         for (let c = 0; c < 4; c++) {
-            let col = [temp[c], temp[c + 4], temp[c + 8], temp[c + 12]];
+            let col = [temp[c], temp[c+4], temp[c+8], temp[c+12]];
             if (dir === "Down") col = col.reverse();
             let newCol = slideLine(col);
             if (dir === "Down") newCol = newCol.reverse();
             if (col.join() !== newCol.join()) moved = true;
-            for (let j = 0; j < 4; j++) temp[j * 4 + c] = newCol[j];
+            for (let j = 0; j < 4; j++) temp[j*4 + c] = newCol[j];
         }
     }
 
@@ -336,13 +307,13 @@ function move(dir) {
                 localStorage.setItem("best2048", bestScore);
                 bestEl.textContent = bestScore;
             }
-        }, 160);
+        }, 180);
     }
 }
 
 function addRandomTile() {
-    const empty = board.map((v, i) => v === 0 ? i : null).filter(i => i !== null);
-    if (empty.length) board[empty[Math.floor(Math.random() * empty.length)]] = Math.random() < 0.9 ? 2 : 4;
+    const empty = board.map((v,i) => v===0 ? i : null).filter(i => i !== null);
+    if (empty.length) board[empty[Math.floor(Math.random()*empty.length)]] = Math.random() < 0.9 ? 2 : 4;
 }
 
 function checkWin() {
@@ -356,9 +327,9 @@ function checkWin() {
 function checkGameOver() {
     if (board.includes(0)) return;
     for (let i = 0; i < 16; i++) {
-        const v = board[i], r = Math.floor(i / 4), c = i % 4;
-        if (c < 3 && board[i + 1] === v) return;
-        if (r < 3 && board[i + 4] === v) return;
+        const v = board[i], r = Math.floor(i/4), c = i%4;
+        if (c < 3 && board[i+1] === v) return;
+        if (r < 3 && board[i+4] === v) return;
     }
     isGameOver = true;
     playSound("gameover");
@@ -396,19 +367,19 @@ function restartGame() {
     undoUsed = false;
     previousBoard = null;
     document.getElementById("undo").classList.remove("opacity-50", "cursor-not-allowed");
-    addRandomTile();
-    addRandomTile();
+    addRandomTile(); addRandomTile();
     updateDisplay();
 }
 
-// ====================== INPUT & BUTTONS ======================
+// ====================== INPUT ======================
 document.addEventListener("keydown", e => {
-    if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
         e.preventDefault();
-        move(e.key.replace("Arrow", ""));
+        move(e.key.replace("Arrow",""));
     }
 });
 
+// Improved swipe threshold
 let tsx = 0, tsy = 0;
 gridEl.addEventListener("touchstart", e => {
     tsx = e.changedTouches[0].screenX;
@@ -417,10 +388,11 @@ gridEl.addEventListener("touchstart", e => {
 gridEl.addEventListener("touchend", e => {
     const dx = e.changedTouches[0].screenX - tsx;
     const dy = e.changedTouches[0].screenY - tsy;
-    if (Math.abs(dx) < 60 && Math.abs(dy) < 60) return;
+    if (Math.abs(dx) < 80 && Math.abs(dy) < 80) return;   // ← Better threshold
     move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "Right" : "Left") : (dy > 0 ? "Down" : "Up"));
 });
 
+// Buttons
 document.getElementById("restart").addEventListener("click", restartGame);
 
 document.getElementById("undo").addEventListener("click", () => {
@@ -433,9 +405,8 @@ document.getElementById("watch-ad-btn").addEventListener("click", () => {
     const cd = document.getElementById("ad-countdown");
     const pg = document.getElementById("ad-progress");
     const int = setInterval(() => {
-        t--;
-        cd.textContent = t;
-        pg.style.width = `${(6 - t) * 16.67}%`;
+        t--; cd.textContent = t;
+        pg.style.width = `${(6-t)*16.67}%`;
         if (t <= 0) {
             clearInterval(int);
             undoModal.classList.add("hidden");
