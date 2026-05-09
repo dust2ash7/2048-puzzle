@@ -122,10 +122,14 @@ function updateDisplay(previousGridState = null) {
                 tile.classList.add("new");
                 setTimeout(() => tile.classList.remove("new"), 320);
                 playSound("spawn");
-            } else if (value > oldVal && oldVal > 0) {
-                tile.classList.add("merged");
-                setTimeout(() => tile.classList.remove("merged"), 380);
-                playSound("merge", value);
+           } else if (value > oldVal && oldVal > 0) {
+    tile.classList.add("merged");
+    
+    createMergeExplosion(tile, value);   // ← Add this line
+    
+    setTimeout(() => tile.classList.remove("merged"), 380);
+    playSound("merge", value);
+}
             }
         }
     });
@@ -139,7 +143,83 @@ function getColor(value) {
     };
     return colors[value] || "#0c3a3a";
 }
+// ====================== PARTICLE EXPLOSION ======================
+function createMergeExplosion(tileElement, value) {
+    if (!tileElement) return;
 
+    const grid = document.getElementById('grid');
+    if (!grid) return;
+
+    const rect = tileElement.getBoundingClientRect();
+    const gridRect = grid.getBoundingClientRect();
+
+    const centerX = rect.left - gridRect.left + rect.width / 2;
+    const centerY = rect.top - gridRect.top + rect.height / 2;
+
+    const intensity = Math.min(2.2, Math.log2(value) / 5);
+    const particleCount = Math.floor(14 + intensity * 18);
+    const baseHue = getTileHue(value);
+
+    for (let i = 0; i < particleCount; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+
+        const hue = (baseHue + (Math.random() * 45 - 22)) % 360;
+        const saturation = 85 + Math.random() * 15;
+        const lightness = 65 + Math.random() * 25;
+        
+        particle.style.backgroundColor = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        particle.style.left = `${centerX}px`;
+        particle.style.top = `${centerY}px`;
+
+        const angle = Math.random() * Math.PI * 2;
+        const velocity = 45 + Math.random() * 110 * intensity;
+        const dx = Math.cos(angle) * velocity;
+        const dy = Math.sin(angle) * velocity - (intensity * 15);
+
+        particle.style.setProperty('--dx', `${dx}px`);
+        particle.style.setProperty('--dy', `${dy}px`);
+
+        const size = 7 + Math.random() * (9 + intensity * 4);
+        particle.style.width = `${size}px`;
+        particle.style.height = `${size}px`;
+
+        particle.style.animationDelay = `${Math.random() * 90}ms`;
+
+        if (Math.random() < 0.12) {
+            particle.style.width = `${size * 1.8}px`;
+            particle.style.height = `${size * 1.8}px`;
+            particle.style.animationDuration = '0.55s';
+        }
+
+        grid.appendChild(particle);
+
+        setTimeout(() => particle.remove(), 950);
+    }
+
+    // Extra pop for big tiles
+    if (value >= 128) {
+        tileElement.style.transition = 'transform 80ms ease-out, box-shadow 120ms';
+        tileElement.style.transform = 'scale(1.28)';
+        tileElement.style.boxShadow = `0 0 40px hsl(${baseHue}, 90%, 70%)`;
+        
+        setTimeout(() => {
+            tileElement.style.transform = 'scale(1)';
+            tileElement.style.boxShadow = '';
+        }, 140);
+    }
+}
+
+function getTileHue(value) {
+    const hueMap = {
+        2: 200, 4: 195,
+        8: 38, 16: 32, 32: 18,
+        64: 0, 128: 260,
+        256: 275, 512: 290,
+        1024: 310, 2048: 330, 4096: 350
+    };
+    return hueMap[value] || 200;
+}
 function addRandomTile() {
     const empty = grid.map((v, i) => v === 0 ? i : -1).filter(i => i >= 0);
     if (empty.length === 0) return false;
