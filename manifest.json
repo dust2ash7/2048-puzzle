@@ -1,21 +1,25 @@
 {
-  "name": "2048 Puzzle",
+  "name": "2048 Premium",
   "short_name": "2048",
-  "description": "Smooth modern 2048 with animations, particles, and sound",
-  "start_url": ".",
+  "description": "Flagship 2048 with smooth tiles, daily challenge, themes, and offline play.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#18181b",
-  "theme_color": "#f59e0b",
+  "orientation": "any",
+  "background_color": "#0e0c0a",
+  "theme_color": "#0e0c0a",
   "icons": [
     {
       "src": "avatar.jpg",
       "sizes": "192x192",
-      "type": "image/jpeg"
+      "type": "image/jpeg",
+      "purpose": "any"
     },
     {
       "src": "avatar.jpg",
       "sizes": "512x512",
-      "type": "image/jpeg"
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ]
 }
