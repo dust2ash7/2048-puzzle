@@ -318,7 +318,6 @@ body {
 
 .stage { display: grid; place-items: center; }
 .board {
-  --cell: calc((100% - var(--gap) * 3) / 4);
   position: relative;
   width: min(100%, 26rem);
   aspect-ratio: 1;
@@ -340,9 +339,11 @@ body {
   border-radius: var(--radius);
 }
 .tiles {
+  --cell: calc((100cqi - var(--gap) * 3) / 4);
   position: absolute;
   inset: var(--gap);
   pointer-events: none;
+  container-type: size;
 }
 
 .tile {
