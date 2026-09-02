@@ -1,174 +1,149 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="obsidian">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>2048 Puzzle</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="manifest" href="manifest.json">
-    
-    <style>
-        .tile {
-            position: absolute;
-            width: calc(25% - 12px);
-            height: calc(25% - 12px);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.25rem;
-            font-weight: 700;
-            border-radius: 1.5rem;
-            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.3),
-                        inset 0 2px 4px rgb(255 255 255 / 0.2);
-            transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
-        }
-
-        .tile.merged::after {
-            content: '';
-            position: absolute;
-            inset: -50%;
-            background: radial-gradient(circle, rgba(255,255,255,0.9) 20%, transparent 70%);
-            animation: mergeFlash 0.4s ease-out forwards;
-            pointer-events: none;
-        }
-
-        @keyframes mergeFlash {
-            0% { opacity: 0.9; transform: scale(0.6); }
-            100% { opacity: 0; transform: scale(2.2); }
-        }
-
-        @keyframes tilePopNew {
-            0% { transform: scale(0.2) rotate(-12deg); opacity: 0; }
-            60% { transform: scale(1.25) rotate(8deg); }
-            100% { transform: scale(1) rotate(0); opacity: 1; }
-        }
-
-        .tile.new {
-            animation: tilePopNew 0.32s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
-        }
-
-        /* ==================== PARTICLE EXPLOSION ==================== */
-        .particle {
-            position: absolute;
-            pointer-events: none;
-            z-index: 30;
-            border-radius: 50%;
-            box-shadow: 0 0 12px currentColor,
-                        0 0 20px rgba(255,255,255,0.6);
-            animation: particleBurst 0.75s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
-            will-change: transform, opacity;
-        }
-
-        @keyframes particleBurst {
-            0% {
-                transform: scale(1) translate(0, 0);
-                opacity: 0.95;
-            }
-            25% {
-                transform: scale(1.1);
-            }
-            100% {
-                transform: scale(0.2) translate(var(--dx), var(--dy));
-                opacity: 0;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0e0c0a">
+  <meta name="description" content="A flagship 2048: smooth tiles, daily challenge, themes, and offline play.">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="2048">
+  <title>2048 — Premium</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" href="avatar.jpg" type="image/jpeg">
+  <link rel="apple-touch-icon" href="avatar.jpg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-zinc-950 text-white min-h-screen flex items-center justify-center font-sans">
+<body>
+  <div class="grain" aria-hidden="true"></div>
+  <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
-    <div class="max-w-md w-full mx-auto p-6">
-        <!-- Header -->
-        <div class="flex justify-between items-center mb-6">
-            <div>
-                <h1 class="text-6xl font-bold text-amber-400 tracking-tighter">2048</h1>
-                <p class="text-zinc-400 text-sm mt-1">by Sean • nrsteward</p>
-            </div>
-            <img src="avatar.jpg" alt="Sean Anime" class="w-16 h-16 rounded-2xl border-4 border-amber-400 shadow-lg">
+  <main class="shell">
+    <header class="topbar">
+      <div class="brand">
+        <img src="avatar.jpg" alt="" class="avatar" width="48" height="48">
+        <div class="brand-copy">
+          <h1 class="wordmark">2048</h1>
+          <p class="eyebrow">Slide · Merge · Ascend</p>
         </div>
-
-        <!-- Scores -->
-        <div class="flex gap-4 mb-6">
-            <div class="flex-1 bg-zinc-900 rounded-3xl p-4 text-center">
-                <div class="text-xs text-zinc-400 tracking-widest">SCORE</div>
-                <div id="score" class="text-4xl font-bold text-white">0</div>
-            </div>
-            <div class="flex-1 bg-zinc-900 rounded-3xl p-4 text-center">
-                <div class="text-xs text-zinc-400 tracking-widest">BEST</div>
-                <div id="best" class="text-4xl font-bold text-white">0</div>
-            </div>
+      </div>
+      <div class="toolbar">
+        <div class="swatches" role="group" aria-label="Color theme">
+          <button type="button" class="swatch" data-theme-id="obsidian" aria-label="Obsidian dark theme" aria-pressed="true" title="Obsidian"></button>
+          <button type="button" class="swatch" data-theme-id="porcelain" aria-label="Porcelain light theme" aria-pressed="false" title="Porcelain"></button>
+          <button type="button" class="swatch" data-theme-id="aurora" aria-label="Aurora night theme" aria-pressed="false" title="Aurora"></button>
         </div>
+        <button type="button" id="btn-mute" class="icon-btn" aria-pressed="false" aria-label="Mute sound" title="Sound">
+          <svg id="icon-sound" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3.2L12 19V5L7.2 10H4zm11.5 2a3.5 3.5 0 0 0-2-3.15v6.3A3.5 3.5 0 0 0 15.5 12zm-2-8.2v1.62A6.5 6.5 0 0 1 19 12a6.5 6.5 0 0 1-5.5 6.58V20.2A8 8 0 0 0 21 12a8 8 0 0 0-7.5-8.2z"/></svg>
+          <svg id="icon-mute" class="is-hidden" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v4h3.2L12 19V5L7.2 10H4zm12.7-3.3 1.4 1.4L16.4 10l1.7 1.7-1.4 1.4L15 11.4l-1.7 1.7-1.4-1.4L13.6 10l-1.7-1.7 1.4-1.4L15 8.6l1.7-1.9z"/></svg>
+        </button>
+        <button type="button" id="btn-stats" class="icon-btn" aria-label="Open statistics" title="Stats">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V9h3v10H5zm6 0V5h3v14h-3zm6 0v-7h3v7h-3z"/></svg>
+        </button>
+      </div>
+    </header>
 
-        <!-- Game Grid -->
-        <div id="grid" class="grid grid-cols-4 gap-3 bg-zinc-800 p-4 rounded-3xl shadow-2xl aspect-square"></div>
+    <section class="meters" aria-label="Scores">
+      <div class="meter">
+        <span class="meter-label">Score</span>
+        <strong id="score" aria-live="polite">0</strong>
+        <span id="score-pop" class="score-pop" aria-hidden="true"></span>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Best</span>
+        <strong id="best">0</strong>
+      </div>
+      <div class="meter">
+        <span class="meter-label">Tile</span>
+        <strong id="best-tile">2</strong>
+      </div>
+    </section>
 
-        <!-- Buttons -->
-        <div class="mt-8 grid grid-cols-3 gap-3">
-            <button id="undo" 
-                    class="bg-zinc-700 hover:bg-zinc-600 text-white font-bold text-xl py-5 rounded-3xl transition flex items-center justify-center gap-2">
-                ↩️ Undo
-            </button>
-            <button id="restart"
-                    class="bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
-                NEW GAME
-            </button>
-            <a href="https://www.buymeacoffee.com/nrsteward" target="_blank"
-               class="bg-emerald-500 hover:bg-emerald-400 font-bold text-xl py-5 rounded-3xl flex items-center justify-center gap-2 transition">
-                ☕ Support
-            </a>
-        </div>
-
-        <p class="text-center text-zinc-500 text-xs mt-6">Swipe or use arrow keys • Reach 2048 to win!</p>
+    <div class="modebar">
+      <div class="segment" role="tablist" aria-label="Game mode">
+        <button type="button" role="tab" id="mode-classic" aria-selected="true">Classic</button>
+        <button type="button" role="tab" id="mode-daily" aria-selected="false">Daily</button>
+      </div>
+      <p id="daily-meta" class="daily-meta">Today’s board is seeded from UTC midnight.</p>
     </div>
 
-    <!-- START SCREEN -->
-    <div id="start-screen" class="fixed inset-0 bg-zinc-950/95 flex items-center justify-center z-50">
-        <div class="max-w-md w-full mx-6 bg-zinc-900 rounded-3xl p-8 text-center shadow-2xl">
-            <h1 class="text-7xl font-bold text-amber-400 tracking-tighter mb-1">2048</h1>
-            <p class="text-zinc-400 text-lg mb-8">Slide • Merge • Reach 2048</p>
+    <section class="stage" aria-label="Game board">
+      <div class="board" id="board" role="application" aria-label="2048 grid. Swipe or use arrow keys.">
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        <div class="slot"></div><div class="slot"></div><div class="slot"></div><div class="slot"></div>
+        <div class="tiles" id="tiles"></div>
+      </div>
+    </section>
 
-            <div class="bg-zinc-800 rounded-2xl p-6 mb-8 text-left">
-                <h2 class="text-amber-300 font-semibold text-xl mb-5">How to Play</h2>
-                <ul class="space-y-4 text-zinc-300">
-                    <li class="flex items-start gap-3">→ Use <strong class="text-white">arrow keys</strong> or <strong class="text-white">swipe</strong></li>
-                    <li class="flex items-start gap-3">→ Same numbers <strong class="text-white">merge</strong> into their sum</li>
-                    <li class="flex items-start gap-3">→ Reach <span class="text-emerald-400 font-bold">2048</span> to win!</li>
-                </ul>
-            </div>
-
-            <button id="start-button"
-                    class="w-full bg-amber-400 hover:bg-amber-300 active:scale-95 text-black font-bold text-2xl py-6 rounded-3xl transition-all duration-200">
-                START GAME
-            </button>
-        </div>
+    <div class="actions">
+      <button type="button" id="btn-undo" class="btn" disabled>Undo</button>
+      <button type="button" id="btn-new" class="btn btn-primary">New Game</button>
     </div>
+    <p class="hint">Arrows or WASD · swipe the board · U to undo</p>
+  </main>
 
-    <!-- REWARDED UNDO MODAL -->
-    <div id="undo-modal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-[100]">
-        <div class="bg-zinc-900 rounded-3xl p-8 max-w-sm w-full mx-4 text-center">
-            <h2 class="text-2xl font-bold mb-2">Watch a short ad?</h2>
-            <p class="text-zinc-400 mb-6">Undo your last move for free</p>
-            
-            <div class="bg-zinc-800 rounded-2xl p-6 mb-6">
-                <div class="text-amber-400 text-sm mb-2">AD • 6 seconds</div>
-                <div id="ad-countdown" class="text-5xl font-mono font-bold text-white">6</div>
-                <div class="w-full h-2 bg-zinc-700 rounded-full mt-4 overflow-hidden">
-                    <div id="ad-progress" class="h-full bg-amber-400 w-0 transition-all"></div>
-                </div>
-            </div>
-
-            <button id="watch-ad-btn"
-                    class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold text-xl py-5 rounded-3xl transition">
-                Watch Ad & Undo
-            </button>
-            
-            <button id="cancel-ad-btn"
-                    class="mt-4 text-zinc-400 hover:text-white text-sm">
-                Cancel
-            </button>
-        </div>
+  <div id="start-overlay" class="overlay is-open" role="dialog" aria-modal="true" aria-labelledby="start-title">
+    <div class="panel start-panel">
+      <p class="kicker">A sliding number ritual</p>
+      <h2 id="start-title" class="display">2048</h2>
+      <p class="lede">Join matching tiles. One merge per tile, per move. Reach 2048 — then keep going if you can.</p>
+      <ul class="rules">
+        <li><span>01</span> Slide the grid. Tiles glide until they hit a wall or a neighbor.</li>
+        <li><span>02</span> Equal values fuse once into their sum. A 2 (or sometimes a 4) appears.</li>
+        <li><span>03</span> Daily uses the same seeded opening for everyone, by UTC date.</li>
+      </ul>
+      <div class="cta-row">
+        <button type="button" id="start-classic" class="btn btn-primary btn-wide">Play Classic</button>
+        <button type="button" id="start-daily" class="btn btn-wide">Daily Challenge</button>
+      </div>
     </div>
+  </div>
 
-    <script src="script.js"></script>
+  <div id="win-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="win-title" hidden>
+    <div class="panel">
+      <p class="kicker">Threshold crossed</p>
+      <h2 id="win-title" class="display">You win</h2>
+      <p class="lede" id="win-copy">2048 is on the board. Continue the run, or start clean.</p>
+      <div class="cta-row">
+        <button type="button" id="win-continue" class="btn btn-primary btn-wide">Continue</button>
+        <button type="button" id="win-new" class="btn btn-wide">New Game</button>
+        <button type="button" id="win-undo" class="btn btn-wide">Undo</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="over-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="over-title" hidden>
+    <div class="panel">
+      <p class="kicker">No moves left</p>
+      <h2 id="over-title" class="display">Game over</h2>
+      <p class="lede" id="over-copy">The grid is locked. Undo the last slide, or begin again.</p>
+      <div class="cta-row">
+        <button type="button" id="over-new" class="btn btn-primary btn-wide">New Game</button>
+        <button type="button" id="over-undo" class="btn btn-wide">Undo</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="stats-overlay" class="overlay" role="dialog" aria-modal="true" aria-labelledby="stats-title" hidden>
+    <div class="panel">
+      <p class="kicker">Atelier record</p>
+      <h2 id="stats-title" class="display">Stats</h2>
+      <dl class="stats-grid">
+        <div><dt>Best score</dt><dd id="stat-best">0</dd></div>
+        <div><dt>Best tile</dt><dd id="stat-tile">2</dd></div>
+        <div><dt>Games played</dt><dd id="stat-games">0</dd></div>
+        <div><dt>Wins</dt><dd id="stat-wins">0</dd></div>
+        <div><dt>Daily best</dt><dd id="stat-daily">—</dd></div>
+      </dl>
+      <button type="button" id="stats-close" class="btn btn-primary btn-wide">Close</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
 </body>
 </html>

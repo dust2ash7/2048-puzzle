@@ -1,432 +1,661 @@
-// ====================== 2048 - V5 (Final Polish) ======================
-let board = Array(16).fill(0);
-let score = 0;
-let bestScore = parseInt(localStorage.getItem("best2048")) || 0;
-let isGameOver = false;
-let hasWon = false;
-let previousBoard = null;
-let undoUsed = false;
+(() => {
+  "use strict";
 
-const gridEl = document.getElementById("grid");
-const scoreEl = document.getElementById("score");
-const bestEl = document.getElementById("best");
-const startScreen = document.getElementById("start-screen");
-const undoModal = document.getElementById("undo-modal");
+  const SIZE = 4;
+  const WIN = 2048;
+  const MOVE_MS = 160;
+  const STORE = "2048premium.v1";
+  const $ = (id) => document.getElementById(id);
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const animMs = reduced ? 0 : MOVE_MS;
 
-let audioContext = null;
-const tiles = [];
+  const els = {
+    html: document.documentElement,
+    board: $("board"),
+    tiles: $("tiles"),
+    score: $("score"),
+    best: $("best"),
+    bestTile: $("best-tile"),
+    scorePop: $("score-pop"),
+    live: $("live"),
+    dailyMeta: $("daily-meta"),
+    mute: $("btn-mute"),
+    iconSound: $("icon-sound"),
+    iconMute: $("icon-mute"),
+    undo: $("btn-undo"),
+    neu: $("btn-new"),
+    start: $("start-overlay"),
+    win: $("win-overlay"),
+    over: $("over-overlay"),
+    stats: $("stats-overlay"),
+    winCopy: $("win-copy"),
+    overCopy: $("over-copy"),
+    modeClassic: $("mode-classic"),
+    modeDaily: $("mode-daily"),
+  };
 
-// ====================== AUDIO ======================
-function initAudio() {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-}
+  let idSeq = 1;
+  let board = emptyBoard();
+  let score = 0;
+  let over = false;
+  let won = false;
+  let continued = false;
+  let busy = false;
+  let started = false;
+  let mode = "classic";
+  let rng = null;
+  let undoSnap = null;
+  let audioCtx = null;
+  let muted = false;
+  let theme = "obsidian";
 
-function playSound(type, value = 0) {
-    if (!audioContext) return;
-    try {
-        if (type === "move") {
-            const osc = audioContext.createOscillator();
-            const gain = audioContext.createGain();
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(260, audioContext.currentTime);
-            gain.gain.setValueAtTime(0.16, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.1);
-            osc.connect(gain).connect(audioContext.destination);
-            osc.start(); osc.stop(audioContext.currentTime + 0.12);
-        } 
-        else if (type === "new") {
-            const noise = audioContext.createBufferSource();
-            const buffer = audioContext.createBuffer(1, audioContext.sampleRate * 0.1, audioContext.sampleRate);
-            const data = buffer.getChannelData(0);
-            for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
-            noise.buffer = buffer;
-            const filter = audioContext.createBiquadFilter();
-            filter.type = "lowpass"; filter.frequency.value = 1350;
-            const gain = audioContext.createGain();
-            gain.gain.setValueAtTime(0.38, audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.25);
-            noise.connect(filter).connect(gain).connect(audioContext.destination);
-            noise.start();
-        } 
-        else if (type === "merge") {
-            const base = 380 + Math.log2(Math.max(value, 4)) * 130;
-            const osc1 = audioContext.createOscillator(); const gain1 = audioContext.createGain();
-            osc1.type = "triangle"; osc1.frequency.setValueAtTime(base, audioContext.currentTime);
-            gain1.gain.setValueAtTime(0.45, audioContext.currentTime); gain1.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.5);
+  const stats = {
+    bestScore: 0,
+    bestTile: 2,
+    gamesPlayed: 0,
+    wins: 0,
+  };
+  let daily = { date: utcDate(), best: 0 };
+  let countedGame = false;
+  let moveGen = 0;
 
-            const osc2 = audioContext.createOscillator(); const gain2 = audioContext.createGain();
-            osc2.type = "sine"; osc2.frequency.setValueAtTime(base * 1.5, audioContext.currentTime);
-            gain2.gain.setValueAtTime(0.26, audioContext.currentTime); gain2.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.4);
+  function emptyBoard() {
+    return Array.from({ length: SIZE }, () => Array(SIZE).fill(null));
+  }
 
-            osc1.connect(gain1).connect(audioContext.destination);
-            osc2.connect(gain2).connect(audioContext.destination);
-            osc1.start(); osc2.start();
-            osc1.stop(audioContext.currentTime + 0.55);
-            osc2.stop(audioContext.currentTime + 0.45);
-        } 
-        else if (type === "win") {
-            [920, 1240, 1480, 1760, 1980].forEach((f, i) => setTimeout(() => {
-                const o = audioContext.createOscillator();
-                const g = audioContext.createGain();
-                o.type = "sine"; o.frequency.value = f;
-                g.gain.value = 0.4; g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.9);
-                o.connect(g).connect(audioContext.destination);
-                o.start(); o.stop(audioContext.currentTime + 1);
-            }, i * 85));
-        } 
-        else if (type === "gameover") {
-            [580, 460, 360, 260].forEach((f, i) => setTimeout(() => {
-                const o = audioContext.createOscillator();
-                const g = audioContext.createGain();
-                o.type = "sawtooth"; o.frequency.value = f;
-                g.gain.value = 0.32; g.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 1.3);
-                o.connect(g).connect(audioContext.destination);
-                o.start(); o.stop(audioContext.currentTime + 1.4);
-            }, i * 180));
-        }
-    } catch (e) {}
-}
+  function utcDate() {
+    return new Date().toISOString().slice(0, 10);
+  }
 
-// ====================== CONFETTI ======================
-let confettiCanvas = null, confettiCtx = null;
-const confettiPieces = [];
-
-class Confetto {
-    constructor() {
-        this.x = Math.random() * window.innerWidth;
-        this.y = Math.random() * -400;
-        this.size = Math.random() * 14 + 9;
-        this.speed = Math.random() * 8 + 6;
-        this.angle = Math.random() * 360;
-        this.angleSpeed = (Math.random() - 0.5) * 0.8;
-        this.color = `hsl(${Math.random()*360}, 95%, 68%)`;
-        this.shape = Math.random() > 0.5 ? "circle" : "rect";
-    }
-    update() { this.y += this.speed; this.angle += this.angleSpeed; this.speed += 0.1; }
-    draw() {
-        if (!confettiCtx) return;
-        confettiCtx.save();
-        confettiCtx.translate(this.x, this.y);
-        confettiCtx.rotate(this.angle * Math.PI / 180);
-        confettiCtx.fillStyle = this.color;
-        if (this.shape === "circle") {
-            confettiCtx.beginPath(); confettiCtx.arc(0, 0, this.size/2, 0, Math.PI*2); confettiCtx.fill();
-        } else {
-            confettiCtx.fillRect(-this.size/2, -this.size/2, this.size, this.size*0.6);
-        }
-        confettiCtx.restore();
-    }
-}
-
-function launchConfetti(duration = 6500) {
-    if (!confettiCanvas) {
-        confettiCanvas = document.createElement("canvas");
-        confettiCanvas.style.cssText = "position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:300;";
-        document.body.appendChild(confettiCanvas);
-        confettiCtx = confettiCanvas.getContext("2d");
-        confettiCanvas.width = window.innerWidth;
-        confettiCanvas.height = window.innerHeight;
-    }
-    for (let i = 0; i < 380; i++) confettiPieces.push(new Confetto());
-
-    const start = Date.now();
-    function animate() {
-        confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
-        for (let i = confettiPieces.length-1; i >= 0; i--) {
-            const c = confettiPieces[i];
-            c.update(); c.draw();
-            if (c.y > confettiCanvas.height + 100) confettiPieces.splice(i, 1);
-        }
-        if (Date.now() - start < duration && confettiPieces.length > 0) requestAnimationFrame(animate);
-    }
-    animate();
-}
-
-// ====================== SETUP ======================
-gridEl.style.position = "relative";
-
-for (let i = 0; i < 16; i++) {
-    const bg = document.createElement("div");
-    bg.className = "absolute bg-zinc-900 rounded-3xl";
-    bg.style.width = "calc(25% - 12px)";
-    bg.style.height = "calc(25% - 12px)";
-    const r = Math.floor(i/4), c = i%4;
-    bg.style.left = `calc(${c*25}% + 6px)`;
-    bg.style.top = `calc(${r*25}% + 6px)`;
-    gridEl.appendChild(bg);
-}
-
-for (let i = 0; i < 16; i++) {
-    const tile = document.createElement("div");
-    tile.className = "tile";
-    gridEl.appendChild(tile);
-    tiles.push(tile);
-}
-
-bestEl.textContent = bestScore;
-
-// ====================== PARTICLES ======================
-function createMergeExplosion(tileElement, value) {
-    if (!tileElement) return;
-    const rect = tileElement.getBoundingClientRect();
-    const gridRect = gridEl.getBoundingClientRect();
-    const cx = rect.left - gridRect.left + rect.width / 2;
-    const cy = rect.top - gridRect.top + rect.height / 2;
-
-    const intensity = Math.min(3.8, Math.log2(value) / 4);
-    const count = Math.floor(24 + intensity * 26);
-    const baseHue = getTileHue(value);
-
-    for (let i = 0; i < count; i++) {
-        const p = document.createElement("div");
-        p.className = "particle";
-        const hue = (baseHue + (Math.random() * 60 - 30)) % 360;
-        p.style.backgroundColor = `hsl(${hue}, 95%, ${65 + Math.random() * 28}%)`;
-        p.style.left = `${cx}px`;
-        p.style.top = `${cy}px`;
-
-        const angle = Math.random() * Math.PI * 2;
-        const vel = 65 + Math.random() * 150 * intensity;
-        p.style.setProperty("--dx", `${Math.cos(angle) * vel}px`);
-        p.style.setProperty("--dy", `${Math.sin(angle) * vel - intensity * 30}px`);
-
-        const sz = 7 + Math.random() * (14 + intensity * 6);
-        p.style.width = `${sz}px`;
-        p.style.height = `${sz}px`;
-        p.style.animationDelay = `${Math.random() * 55}ms`;
-
-        gridEl.appendChild(p);
-        setTimeout(() => p.remove(), 1300);
-    }
-
-    if (value >= 256) {
-        tileElement.style.transition = "transform 85ms ease-out, box-shadow 180ms";
-        tileElement.style.transform = "scale(1.45)";
-        tileElement.style.boxShadow = `0 0 70px hsl(${baseHue}, 95%, 85%)`;
-        setTimeout(() => { tileElement.style.transform = "scale(1)"; tileElement.style.boxShadow = ""; }, 200);
-    }
-}
-
-function getTileHue(v) {
-    const map = {2:200,4:195,8:38,16:32,32:18,64:0,128:260,256:275,512:290,1024:310,2048:330,4096:350};
-    return map[v] || 200;
-}
-
-function getColor(v) {
-    const c = {2:"#f59e0b",4:"#eab308",8:"#c2410f",16:"#b91c1c",32:"#991b1b",64:"#7e22ce",
-               128:"#6b21a8",256:"#581c87",512:"#1e40af",1024:"#1e3a8a",2048:"#14b8a6",4096:"#0f766e"};
-    return c[v] || "#0c3a3a";
-}
-
-// ====================== GAME LOGIC ======================
-function updateDisplay(oldBoard = null) {
-    tiles.forEach((tile, i) => {
-        const val = board[i];
-        if (val === 0) { tile.style.opacity = "0"; return; }
-
-        tile.style.left = `calc(${(i%4)*25}% + 6px)`;
-        tile.style.top = `calc(${Math.floor(i/4)*25}% + 6px)`;
-        tile.style.backgroundColor = getColor(val);
-        tile.style.color = val >= 8 ? "#fff" : "#111";
-        tile.style.fontSize = val >= 1000 ? "1.65rem" : "2.25rem";
-        tile.textContent = val;
-        tile.style.opacity = "1";
-
-        if (oldBoard) {
-            const old = oldBoard[i];
-            if (old === 0 && val > 0) {
-                tile.classList.add("new");
-                setTimeout(() => tile.classList.remove("new"), 340);
-                playSound("new");
-            } else if (val > old && old > 0) {
-                tile.classList.add("merged");
-                createMergeExplosion(tile, val);
-                setTimeout(() => tile.classList.remove("merged"), 420);
-                playSound("merge", val);
-            }
-        }
+  function formatDate(iso) {
+    const [y, m, d] = iso.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
     });
-    scoreEl.textContent = score;
-}
+  }
 
-function slideLine(line) {
-    let arr = line.filter(x => x !== 0);
-    let i = 0;
-    while (i < arr.length - 1) {
-        if (arr[i] === arr[i+1]) {
-            arr[i] *= 2;
-            score += arr[i];
-            arr.splice(i+1, 1);
-        } else i++;
+  function hashSeed(str) {
+    let h = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      h ^= str.charCodeAt(i);
+      h = Math.imul(h, 16777619);
     }
-    while (arr.length < 4) arr.push(0);
-    return arr;
-}
+    return h >>> 0;
+  }
 
-function move(dir) {
-    if (isGameOver || hasWon) return;
-    previousBoard = [...board];
-    const oldBoard = [...board];
-    let moved = false;
-    let temp = [...board];
+  function makeRng(seed) {
+    let s = seed >>> 0;
+    return {
+      get state() { return s; },
+      set state(v) { s = v >>> 0; },
+      next() {
+        s = (s + 0x6d2b79f5) >>> 0;
+        let t = s;
+        t = Math.imul(t ^ (t >>> 15), t | 1);
+        t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+      },
+    };
+  }
 
-    if (dir === "Left" || dir === "Right") {
-        for (let r = 0; r < 4; r++) {
-            let start = r*4;
-            let row = temp.slice(start, start+4);
-            if (dir === "Right") row = row.reverse();
-            let newRow = slideLine(row);
-            if (dir === "Right") newRow = newRow.reverse();
-            if (row.join() !== newRow.join()) moved = true;
-            for (let j = 0; j < 4; j++) temp[start + j] = newRow[j];
-        }
+  function rand() {
+    return rng ? rng.next() : Math.random();
+  }
+
+  function load() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(STORE) || "{}");
+      if (raw.stats) Object.assign(stats, raw.stats);
+      if (raw.daily && raw.daily.date === utcDate()) daily = raw.daily;
+      else daily = { date: utcDate(), best: 0 };
+      if (raw.theme) theme = raw.theme;
+      muted = !!raw.muted;
+    } catch (_) { /* ignore */ }
+  }
+
+  function save() {
+    localStorage.setItem(STORE, JSON.stringify({ stats, daily, theme, muted }));
+  }
+
+  function applyTheme(name) {
+    theme = name;
+    els.html.setAttribute("data-theme", name);
+    document.querySelectorAll(".swatch").forEach((btn) => {
+      btn.setAttribute("aria-pressed", String(btn.dataset.themeId === name));
+    });
+    const meta = document.querySelector('meta[name="theme-color"]');
+    const cs = getComputedStyle(els.html);
+    if (meta) meta.setAttribute("content", cs.getPropertyValue("--theme-color").trim() || "#0e0c0a");
+    save();
+  }
+
+  function setMuted(v) {
+    muted = v;
+    els.mute.setAttribute("aria-pressed", String(muted));
+    els.mute.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound");
+    els.iconSound.classList.toggle("is-hidden", muted);
+    els.iconMute.classList.toggle("is-hidden", !muted);
+    save();
+  }
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) audioCtx = new Ctx();
+    }
+    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+  }
+
+  function tone(freq, dur, type, vol, delay) {
+    if (muted || reduced || !audioCtx) return;
+    const t0 = audioCtx.currentTime + (delay || 0);
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = type || "sine";
+    osc.frequency.setValueAtTime(freq, t0);
+    g.gain.setValueAtTime(Math.max(0.0001, vol), t0);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(g).connect(audioCtx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.02);
+  }
+
+  function sfx(kind, value) {
+    if (muted || reduced) return;
+    ensureAudio();
+    if (!audioCtx) return;
+    if (kind === "move") tone(240, 0.08, "sine", 0.05);
+    else if (kind === "spawn") tone(520, 0.07, "triangle", 0.04);
+    else if (kind === "merge") {
+      const base = 320 + Math.log2(Math.max(value, 4)) * 42;
+      tone(base, 0.16, "triangle", 0.08);
+      tone(base * 1.5, 0.12, "sine", 0.04, 0.02);
+    } else if (kind === "win") {
+      [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.28, "sine", 0.07, i * 0.09));
+    } else if (kind === "over") {
+      [392, 330, 262, 196].forEach((f, i) => tone(f, 0.22, "sine", 0.05, i * 0.1));
+    }
+  }
+
+  function announce(msg) {
+    els.live.textContent = msg;
+  }
+
+  function snapshot() {
+    return {
+      board: board.map((row) => row.map((c) => (c ? { id: c.id, value: c.value } : null))),
+      score,
+      over,
+      won,
+      continued,
+      idSeq,
+      rngState: rng ? rng.state : null,
+      countedGame,
+    };
+  }
+
+  function restore(snap) {
+    board = snap.board.map((row) => row.map((c) => (c ? { id: c.id, value: c.value } : null)));
+    score = snap.score;
+    over = snap.over;
+    won = snap.won;
+    continued = snap.continued;
+    idSeq = snap.idSeq;
+    countedGame = snap.countedGame;
+    if (rng && snap.rngState != null) rng.state = snap.rngState;
+    rebuildTiles();
+    refreshMeters(0);
+    setUndo(null);
+    hideOverlay(els.win);
+    hideOverlay(els.over);
+  }
+
+  function empties() {
+    const out = [];
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) if (!board[r][c]) out.push([r, c]);
+    }
+    return out;
+  }
+
+  function spawn() {
+    const spots = empties();
+    if (!spots.length) return null;
+    const [r, c] = spots[Math.floor(rand() * spots.length)];
+    const value = rand() < 0.9 ? 2 : 4;
+    const tile = { id: idSeq++, value };
+    board[r][c] = tile;
+    return { r, c, tile };
+  }
+
+  function lineCells(dir, index) {
+    const cells = [];
+    if (dir === "left") {
+      for (let c = 0; c < SIZE; c++) cells.push({ r: index, c });
+    } else if (dir === "right") {
+      for (let c = SIZE - 1; c >= 0; c--) cells.push({ r: index, c });
+    } else if (dir === "up") {
+      for (let r = 0; r < SIZE; r++) cells.push({ r, c: index });
     } else {
-        for (let c = 0; c < 4; c++) {
-            let col = [temp[c], temp[c+4], temp[c+8], temp[c+12]];
-            if (dir === "Down") col = col.reverse();
-            let newCol = slideLine(col);
-            if (dir === "Down") newCol = newCol.reverse();
-            if (col.join() !== newCol.join()) moved = true;
-            for (let j = 0; j < 4; j++) temp[j*4 + c] = newCol[j];
+      for (let r = SIZE - 1; r >= 0; r--) cells.push({ r, c: index });
+    }
+    return cells;
+  }
+
+  function computeMove(dir) {
+    const next = emptyBoard();
+    const absorbed = [];
+    const merges = [];
+    let scoreDelta = 0;
+    let changed = false;
+
+    for (let i = 0; i < SIZE; i++) {
+      const coords = lineCells(dir, i);
+      const packed = [];
+      for (const pos of coords) {
+        const t = board[pos.r][pos.c];
+        if (t) packed.push({ ...t, fromR: pos.r, fromC: pos.c });
+      }
+      const placed = [];
+      let p = 0;
+      while (p < packed.length) {
+        const cur = packed[p];
+        const nxt = packed[p + 1];
+        const dest = coords[placed.length];
+        if (nxt && cur.value === nxt.value) {
+          const value = cur.value * 2;
+          placed.push({ id: cur.id, value, merge: true });
+          next[dest.r][dest.c] = { id: cur.id, value };
+          absorbed.push({ id: nxt.id, r: dest.r, c: dest.c });
+          merges.push({ id: cur.id, value, r: dest.r, c: dest.c });
+          scoreDelta += value;
+          changed = true;
+          p += 2;
+        } else {
+          placed.push({ id: cur.id, value: cur.value, merge: false });
+          next[dest.r][dest.c] = { id: cur.id, value: cur.value };
+          if (cur.fromR !== dest.r || cur.fromC !== dest.c) changed = true;
+          p += 1;
         }
+      }
     }
+    return { next, absorbed, merges, scoreDelta, changed };
+  }
 
-    if (moved) {
-        board = temp;
-        playSound("move");
-        updateDisplay(oldBoard);
-
-        setTimeout(() => {
-            addRandomTile();
-            updateDisplay(oldBoard);
-            checkWin();
-            checkGameOver();
-
-            if (score > bestScore) {
-                bestScore = score;
-                localStorage.setItem("best2048", bestScore);
-                bestEl.textContent = bestScore;
-            }
-        }, 180);
+  function canMove() {
+    if (empties().length) return true;
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const v = board[r][c].value;
+        if (c + 1 < SIZE && board[r][c + 1].value === v) return true;
+        if (r + 1 < SIZE && board[r + 1][c].value === v) return true;
+      }
     }
-}
+    return false;
+  }
 
-function addRandomTile() {
-    const empty = board.map((v,i) => v===0 ? i : null).filter(i => i !== null);
-    if (empty.length) board[empty[Math.floor(Math.random()*empty.length)]] = Math.random() < 0.9 ? 2 : 4;
-}
+  function highestTile() {
+    let m = 0;
+    for (const row of board) for (const t of row) if (t && t.value > m) m = t.value;
+    return m;
+  }
 
-function checkWin() {
-    if (hasWon || !board.includes(2048)) return;
-    hasWon = true;
-    playSound("win");
-    launchConfetti(7000);
-    showWinModal();
-}
+  function tileEl(id) {
+    return els.tiles.querySelector(`[data-id="${id}"]`);
+  }
 
-function checkGameOver() {
-    if (board.includes(0)) return;
-    for (let i = 0; i < 16; i++) {
-        const v = board[i], r = Math.floor(i/4), c = i%4;
-        if (c < 3 && board[i+1] === v) return;
-        if (r < 3 && board[i+4] === v) return;
+  function makeTile(id, value, r, c, extraClass) {
+    const wrap = document.createElement("div");
+    wrap.className = "tile no-trans" + (extraClass ? " " + extraClass : "");
+    wrap.dataset.id = String(id);
+    wrap.style.setProperty("--r", r);
+    wrap.style.setProperty("--c", c);
+    const face = document.createElement("div");
+    face.className = "tile-face tile-v" + value;
+    face.textContent = value;
+    wrap.appendChild(face);
+    els.tiles.appendChild(wrap);
+    wrap.offsetHeight;
+    wrap.classList.remove("no-trans");
+    return wrap;
+  }
+
+  function paintFace(el, value) {
+    const face = el.querySelector(".tile-face");
+    face.className = "tile-face tile-v" + value;
+    face.textContent = value;
+  }
+
+  function rebuildTiles() {
+    els.tiles.innerHTML = "";
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const t = board[r][c];
+        if (t) makeTile(t.id, t.value, r, c);
+      }
     }
-    isGameOver = true;
-    playSound("gameover");
-    showGameOverModal();
-}
+  }
 
-// ====================== MODALS ======================
-function showWinModal() {
-    const m = document.createElement("div");
-    m.className = "fixed inset-0 bg-black/90 flex items-center justify-center z-[200]";
-    m.innerHTML = `<div class="bg-zinc-900 rounded-3xl p-12 text-center max-w-sm w-full mx-4">
-        <h2 class="text-6xl mb-3">🎉 YOU WIN!</h2>
-        <p class="text-3xl text-amber-400 mb-10">2048 Reached</p>
-        <button onclick="this.closest('.fixed').remove(); restartGame()" class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-7 rounded-3xl text-2xl">Play Again</button>
-    </div>`;
-    document.body.appendChild(m);
-}
+  function refreshMeters(delta) {
+    els.score.textContent = String(score);
+    els.best.textContent = String(stats.bestScore);
+    els.bestTile.textContent = String(stats.bestTile);
+    els.undo.disabled = !undoSnap || busy;
+    if (delta) {
+      els.scorePop.textContent = "+" + delta;
+      els.scorePop.classList.remove("is-on");
+      void els.scorePop.offsetWidth;
+      els.scorePop.classList.add("is-on");
+    }
+  }
 
-function showGameOverModal() {
-    const m = document.createElement("div");
-    m.className = "fixed inset-0 bg-black/90 flex items-center justify-center z-[200]";
-    m.innerHTML = `<div class="bg-zinc-900 rounded-3xl p-12 text-center max-w-sm w-full mx-4">
-        <h2 class="text-5xl mb-4">Game Over</h2>
-        <p class="text-2xl mb-8">Final Score: <span class="font-bold text-white">${score}</span></p>
-        <button onclick="this.closest('.fixed').remove(); restartGame()" class="w-full bg-amber-400 hover:bg-amber-300 text-black font-bold py-7 rounded-3xl text-2xl">Try Again</button>
-    </div>`;
-    document.body.appendChild(m);
-}
+  function persistProgress() {
+    const hi = highestTile();
+    if (score > stats.bestScore) stats.bestScore = score;
+    if (hi > stats.bestTile) stats.bestTile = hi;
+    if (mode === "daily" && daily.date === utcDate() && score > daily.best) daily.best = score;
+    save();
+    refreshMeters(0);
+  }
 
-function restartGame() {
-    board = Array(16).fill(0);
+  function setUndo(snap) {
+    undoSnap = snap;
+    els.undo.disabled = !undoSnap;
+    $("win-undo").disabled = !undoSnap;
+    $("over-undo").disabled = !undoSnap;
+  }
+
+  function hideOverlay(node) {
+    node.classList.remove("is-open");
+    node.hidden = true;
+  }
+
+  function showOverlay(node) {
+    node.hidden = false;
+    requestAnimationFrame(() => node.classList.add("is-open"));
+  }
+
+  function updateModeUi() {
+    els.modeClassic.setAttribute("aria-selected", String(mode === "classic"));
+    els.modeDaily.setAttribute("aria-selected", String(mode === "daily"));
+    const today = utcDate();
+    if (mode === "daily") {
+      els.dailyMeta.textContent = "Daily · " + formatDate(today) + " UTC · best " + daily.best;
+    } else {
+      els.dailyMeta.textContent = "Classic run · best " + stats.bestScore;
+    }
+  }
+
+  function fillStatsPanel() {
+    $("stat-best").textContent = String(stats.bestScore);
+    $("stat-tile").textContent = String(stats.bestTile);
+    $("stat-games").textContent = String(stats.gamesPlayed);
+    $("stat-wins").textContent = String(stats.wins);
+    $("stat-daily").textContent = daily.date === utcDate() ? String(daily.best) : "-";
+  }
+
+  function newGame(nextMode) {
+    mode = nextMode || mode;
+    if (mode === "daily") {
+      const today = utcDate();
+      if (daily.date !== today) daily = { date: today, best: 0 };
+      rng = makeRng(hashSeed("2048-daily-" + today));
+    } else {
+      rng = null;
+    }
+    board = emptyBoard();
     score = 0;
-    isGameOver = false;
-    hasWon = false;
-    undoUsed = false;
-    previousBoard = null;
-    document.getElementById("undo").classList.remove("opacity-50", "cursor-not-allowed");
-    addRandomTile(); addRandomTile();
-    updateDisplay();
-}
+    over = false;
+    won = false;
+    continued = false;
+    busy = false;
+    idSeq = 1;
+    countedGame = false;
+    moveGen += 1;
+    setUndo(null);
+    hideOverlay(els.win);
+    hideOverlay(els.over);
+    els.tiles.innerHTML = "";
+    const a = spawn();
+    const b = spawn();
+    if (a) makeTile(a.tile.id, a.tile.value, a.r, a.c, "is-new");
+    if (b) makeTile(b.tile.id, b.tile.value, b.r, b.c, "is-new");
+    persistProgress();
+    refreshMeters(0);
+    updateModeUi();
+    announce(mode === "daily" ? "Daily challenge started." : "New game.");
+  }
 
-// ====================== INPUT ======================
-document.addEventListener("keydown", e => {
-    if (["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].includes(e.key)) {
-        e.preventDefault();
-        move(e.key.replace("Arrow",""));
+  function markGameStarted() {
+    if (!countedGame) {
+      stats.gamesPlayed += 1;
+      countedGame = true;
+      save();
     }
-});
+  }
 
-// Improved swipe threshold
-let tsx = 0, tsy = 0;
-gridEl.addEventListener("touchstart", e => {
-    tsx = e.changedTouches[0].screenX;
-    tsy = e.changedTouches[0].screenY;
-});
-gridEl.addEventListener("touchend", e => {
-    const dx = e.changedTouches[0].screenX - tsx;
-    const dy = e.changedTouches[0].screenY - tsy;
-    if (Math.abs(dx) < 80 && Math.abs(dy) < 80) return;   // ← Better threshold
-    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "Right" : "Left") : (dy > 0 ? "Down" : "Up"));
-});
+  function afterMove(merges, scoreDelta, spawned) {
+    persistProgress();
+    refreshMeters(scoreDelta);
+    if (scoreDelta) announce("Score " + score + (merges.length ? ", merged " + merges.map((m) => m.value).join(", ") : ""));
 
-// Buttons
-document.getElementById("restart").addEventListener("click", restartGame);
+    const hi = highestTile();
+    const locked = !canMove();
+    if (!won && !continued && hi >= WIN) {
+      won = true;
+      stats.wins += 1;
+      save();
+      sfx("win");
+      els.winCopy.textContent = "You reached " + hi + ". Score " + score + ". Keep sliding, or start a fresh grid.";
+      showOverlay(els.win);
+      announce("You win. Score " + score + ".");
+      if (locked) over = true;
+    } else if (locked) {
+      over = true;
+      sfx("over");
+      els.overCopy.textContent = "Final score " + score + ". Highest tile " + hi + ".";
+      showOverlay(els.over);
+      announce("Game over. Score " + score + ".");
+    }
+    busy = false;
+    els.undo.disabled = !undoSnap;
+  }
 
-document.getElementById("undo").addEventListener("click", () => {
-    if (undoUsed || !previousBoard || isGameOver) return;
-    undoModal.classList.remove("hidden");
-});
+  function overlayOpen() {
+    return ["start", "win", "over", "stats"].some((id) => $(id + "-overlay").classList.contains("is-open"));
+  }
 
-document.getElementById("watch-ad-btn").addEventListener("click", () => {
-    let t = 6;
-    const cd = document.getElementById("ad-countdown");
-    const pg = document.getElementById("ad-progress");
-    const int = setInterval(() => {
-        t--; cd.textContent = t;
-        pg.style.width = `${(6-t)*16.67}%`;
-        if (t <= 0) {
-            clearInterval(int);
-            undoModal.classList.add("hidden");
-            if (previousBoard) {
-                board = [...previousBoard];
-                score = Math.max(0, score - 80);
-                undoUsed = true;
-                document.getElementById("undo").classList.add("opacity-50", "cursor-not-allowed");
-                updateDisplay();
-            }
-        }
-    }, 1000);
-});
+  function move(dir) {
+    if (!started || busy || over || overlayOpen()) return;
+    const result = computeMove(dir);
+    if (!result.changed) return;
 
-document.getElementById("cancel-ad-btn").addEventListener("click", () => undoModal.classList.add("hidden"));
+    busy = true;
+    const gen = ++moveGen;
+    markGameStarted();
+    setUndo(snapshot());
+    board = result.next;
+    score += result.scoreDelta;
 
-document.getElementById("start-button").addEventListener("click", () => {
-    initAudio();
-    startScreen.style.display = "none";
-    addRandomTile();
-    addRandomTile();
-    updateDisplay();
-});
+    for (const row of board) {
+      for (const t of row) {
+        if (!t) continue;
+        let el = tileEl(t.id);
+        if (!el) el = makeTile(t.id, t.value, 0, 0);
+        const pos = findId(t.id);
+        el.style.setProperty("--r", pos[0]);
+        el.style.setProperty("--c", pos[1]);
+        el.classList.remove("is-new", "is-merge");
+      }
+    }
+    for (const a of result.absorbed) {
+      const el = tileEl(a.id);
+      if (!el) continue;
+      el.classList.add("is-absorbed");
+      el.style.setProperty("--r", a.r);
+      el.style.setProperty("--c", a.c);
+    }
+
+    sfx("move");
+    if (result.merges.length) sfx("merge", result.merges[result.merges.length - 1].value);
+
+    window.setTimeout(() => {
+      if (gen !== moveGen) return;
+      for (const a of result.absorbed) {
+        const el = tileEl(a.id);
+        if (el) el.remove();
+      }
+      for (const m of result.merges) {
+        const el = tileEl(m.id);
+        if (!el) continue;
+        paintFace(el, m.value);
+        el.classList.add("is-merge");
+      }
+      const spawned = spawn();
+      if (spawned) {
+        makeTile(spawned.tile.id, spawned.tile.value, spawned.r, spawned.c, "is-new");
+        sfx("spawn");
+      }
+      afterMove(result.merges, result.scoreDelta, spawned);
+    }, animMs);
+  }
+
+  function findId(id) {
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        if (board[r][c] && board[r][c].id === id) return [r, c];
+      }
+    }
+    return [0, 0];
+  }
+
+  function doUndo() {
+    if (!undoSnap || busy) return;
+    restore(undoSnap);
+    announce("Last move undone. Score " + score + ".");
+  }
+
+  function begin(nextMode) {
+    ensureAudio();
+    started = true;
+    hideOverlay(els.start);
+    newGame(nextMode);
+  }
+
+  function onKey(e) {
+    if (e.repeat) return;
+    const tag = (e.target && e.target.tagName) || "";
+    if (tag === "INPUT" || tag === "TEXTAREA") return;
+    const map = {
+      ArrowLeft: "left", a: "left", A: "left",
+      ArrowRight: "right", d: "right", D: "right",
+      ArrowUp: "up", w: "up", W: "up",
+      ArrowDown: "down", s: "down", S: "down",
+    };
+    if (map[e.key]) {
+      e.preventDefault();
+      move(map[e.key]);
+      return;
+    }
+    if (e.key === "Escape" && els.stats.classList.contains("is-open")) {
+      hideOverlay(els.stats);
+      return;
+    }
+    if (e.key === "u" || e.key === "U") {
+      e.preventDefault();
+      doUndo();
+    }
+  }
+
+  function bindSwipe() {
+    let x0 = 0;
+    let y0 = 0;
+    let tracking = false;
+    els.board.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      tracking = true;
+      x0 = e.clientX;
+      y0 = e.clientY;
+      try { els.board.setPointerCapture(e.pointerId); } catch (_) { /* ignore */ }
+    });
+    els.board.addEventListener("pointerup", (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const dx = e.clientX - x0;
+      const dy = e.clientY - y0;
+      const ax = Math.abs(dx);
+      const ay = Math.abs(dy);
+      if (Math.max(ax, ay) < 24) return;
+      if (ax > ay) move(dx > 0 ? "right" : "left");
+      else move(dy > 0 ? "down" : "up");
+    });
+    els.board.addEventListener("pointercancel", () => { tracking = false; });
+  }
+
+  function bindUi() {
+    document.querySelectorAll(".swatch").forEach((btn) => {
+      btn.addEventListener("click", () => applyTheme(btn.dataset.themeId));
+    });
+    els.mute.addEventListener("click", () => {
+      ensureAudio();
+      setMuted(!muted);
+    });
+    $("btn-stats").addEventListener("click", () => {
+      fillStatsPanel();
+      showOverlay(els.stats);
+    });
+    $("stats-close").addEventListener("click", () => hideOverlay(els.stats));
+    els.stats.addEventListener("click", (e) => {
+      if (e.target === els.stats) hideOverlay(els.stats);
+    });
+    els.undo.addEventListener("click", doUndo);
+    els.neu.addEventListener("click", () => newGame(mode));
+    $("start-classic").addEventListener("click", () => begin("classic"));
+    $("start-daily").addEventListener("click", () => begin("daily"));
+    $("win-continue").addEventListener("click", () => {
+      continued = true;
+      hideOverlay(els.win);
+      if (over || !canMove()) {
+        over = true;
+        const hi = highestTile();
+        els.overCopy.textContent = "Final score " + score + ". Highest tile " + hi + ".";
+        showOverlay(els.over);
+        announce("No moves left after 2048. Score " + score + ".");
+      } else {
+        announce("Continuing after 2048.");
+      }
+    });
+    $("win-new").addEventListener("click", () => newGame(mode));
+    $("win-undo").addEventListener("click", doUndo);
+    $("over-new").addEventListener("click", () => newGame(mode));
+    $("over-undo").addEventListener("click", doUndo);
+    els.modeClassic.addEventListener("click", () => {
+      if (mode === "classic") return;
+      begin("classic");
+    });
+    els.modeDaily.addEventListener("click", () => {
+      if (mode === "daily" && started) return;
+      begin("daily");
+    });
+    document.addEventListener("keydown", onKey);
+    bindSwipe();
+  }
+
+  function registerSw() {
+    if (!("serviceWorker" in navigator)) return;
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("./sw.js").catch(() => { /* offline first run */ });
+    });
+  }
+
+  load();
+  applyTheme(theme);
+  setMuted(muted);
+  updateModeUi();
+  refreshMeters(0);
+  bindUi();
+  registerSw();
+})();
