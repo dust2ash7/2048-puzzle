@@ -46,8 +46,14 @@
   let rng = null;
   let undoSnap = null;
   let audioCtx = null;
+  let masterGain = null;
+  let musicGain = null;
+  let musicNodes = [];
+  let musicStarted = false;
   let muted = false;
   let theme = "obsidian";
+  const MUSIC_VOL = 0.16;
+  const MASTER_VOL = 0.7;
 
   const stats = {
     bestScore: 0,
@@ -138,6 +144,7 @@
     els.mute.setAttribute("aria-label", muted ? "Unmute sound" : "Mute sound");
     els.iconSound.classList.toggle("is-hidden", muted);
     els.iconMute.classList.toggle("is-hidden", !muted);
+    if (masterGain) masterGain.gain.value = muted ? 0 : MASTER_VOL;
     save();
   }
 
@@ -145,12 +152,92 @@
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (Ctx) audioCtx = new Ctx();
+      if (audioCtx) {
+        masterGain = audioCtx.createGain();
+        masterGain.gain.value = muted ? 0 : MASTER_VOL;
+        masterGain.connect(audioCtx.destination);
+        musicGain = audioCtx.createGain();
+        musicGain.gain.value = 0.0001;
+        musicGain.connect(masterGain);
+      }
     }
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
   }
 
+  function fadeMusic(to, dur) {
+    if (!musicGain || !audioCtx) return;
+    const t0 = audioCtx.currentTime;
+    const g = musicGain.gain;
+    g.cancelScheduledValues(t0);
+    g.setValueAtTime(Math.max(0.0001, g.value), t0);
+    g.linearRampToValueAtTime(Math.max(0.0001, to), t0 + dur);
+  }
+
+  function musicStop() {
+    musicNodes.forEach((n) => {
+      try { n.stop(); } catch (_) {}
+      try { n.disconnect(); } catch (_) {}
+    });
+    musicNodes = [];
+    musicStarted = false;
+    if (musicGain) musicGain.gain.value = 0.0001;
+  }
+
+  function musicStart() {
+    ensureAudio();
+    if (!audioCtx || !musicGain || muted) return;
+    if (!musicStarted) {
+      const ctx = audioCtx;
+      const dest = musicGain;
+      const freqs = [
+        [130.81, "sine", 0.18],
+        [155.56, "sine", 0.11],
+        [196.0, "sine", 0.08],
+        [130.4, "sine", 0.09],
+      ];
+      freqs.forEach(([freq, type, vol]) => {
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.type = type;
+        o.frequency.value = freq;
+        g.gain.value = vol;
+        o.connect(g).connect(dest);
+        o.start();
+        musicNodes.push(o);
+      });
+      // quiet looping air
+      const nLen = Math.floor(ctx.sampleRate * 3);
+      const buf = ctx.createBuffer(1, nLen, ctx.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < nLen; i++) data[i] = (Math.random() * 2 - 1) * 0.5;
+      const noise = ctx.createBufferSource();
+      noise.buffer = buf;
+      noise.loop = true;
+      const bp = ctx.createBiquadFilter();
+      bp.type = "bandpass";
+      bp.frequency.value = 280;
+      bp.Q.value = 1.4;
+      const ng = ctx.createGain();
+      ng.gain.value = 0.03;
+      noise.connect(bp).connect(ng).connect(dest);
+      noise.start();
+      musicNodes.push(noise);
+      musicStarted = true;
+    }
+    fadeMusic(MUSIC_VOL, 0.6);
+  }
+
+  function duckMusic(level, holdMs) {
+    if (!musicStarted || muted) return;
+    fadeMusic(level, 0.12);
+    setTimeout(() => {
+      if (musicStarted && !muted && !over) fadeMusic(MUSIC_VOL, 0.5);
+      else if (musicStarted && !muted && over) fadeMusic(0.03, 0.3);
+    }, holdMs);
+  }
+
   function tone(freq, dur, type, vol, delay) {
-    if (muted || reduced || !audioCtx) return;
+    if (muted || !audioCtx || !masterGain) return;
     const t0 = audioCtx.currentTime + (delay || 0);
     const osc = audioCtx.createOscillator();
     const g = audioCtx.createGain();
@@ -158,13 +245,13 @@
     osc.frequency.setValueAtTime(freq, t0);
     g.gain.setValueAtTime(Math.max(0.0001, vol), t0);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-    osc.connect(g).connect(audioCtx.destination);
+    osc.connect(g).connect(masterGain);
     osc.start(t0);
     osc.stop(t0 + dur + 0.02);
   }
 
   function sfx(kind, value) {
-    if (muted || reduced) return;
+    if (muted) return;
     ensureAudio();
     if (!audioCtx) return;
     if (kind === "move") tone(240, 0.08, "sine", 0.05);
@@ -449,6 +536,7 @@
       stats.wins += 1;
       save();
       sfx("win");
+      duckMusic(0.04, 1200);
       els.winCopy.textContent = "You reached " + hi + ". Score " + score + ". Keep sliding, or start a fresh grid.";
       showOverlay(els.win);
       announce("You win. Score " + score + ".");
@@ -456,6 +544,7 @@
     } else if (locked) {
       over = true;
       sfx("over");
+      duckMusic(0.03, 1500);
       els.overCopy.textContent = "Final score " + score + ". Highest tile " + hi + ".";
       showOverlay(els.over);
       announce("Game over. Score " + score + ".");
@@ -499,6 +588,7 @@
       el.style.setProperty("--c", a.c);
     }
 
+    if (!musicStarted) musicStart();
     sfx("move");
     if (result.merges.length) sfx("merge", result.merges[result.merges.length - 1].value);
 
@@ -541,6 +631,7 @@
   function begin(nextMode) {
     ensureAudio();
     started = true;
+    musicStart();
     hideOverlay(els.start);
     newGame(nextMode);
   }
@@ -654,6 +745,12 @@
   load();
   applyTheme(theme);
   setMuted(muted);
+
+  document.addEventListener("visibilitychange", () => {
+    if (!musicStarted || muted || !musicGain) return;
+    if (document.hidden) fadeMusic(0.0001, 0.2);
+    else if (started) fadeMusic(MUSIC_VOL, 0.35);
+  });
   updateModeUi();
   refreshMeters(0);
   bindUi();
