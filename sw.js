@@ -1,11 +1,12 @@
-const CACHE = "2048-premium-v2";
+const CACHE = "2048-premium-v3";
 const SHELL = [
   "./",
   "./index.html",
   "./style.css",
   "./script.js",
   "./manifest.json",
-  "./avatar.jpg"
+  "./icon-192.svg",
+  "./icon-512.svg"
 ];
 
 self.addEventListener("install", (event) => {

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" gradientUnits="objectBoundingBox" x1="0.213" y1="0.090" x2="0.787" y2="0.910">
+      <stop offset="0%" stop-color="#2a241e"/>
+      <stop offset="100%" stop-color="#16120e"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="23" ry="23" fill="url(#bg)"/>
+  <text x="96" y="96" text-anchor="middle" dominant-baseline="central" font-family="Georgia, 'Times New Roman', Times, serif" font-size="120" font-weight="700" fill="#e2a35a">2</text>
+</svg>
