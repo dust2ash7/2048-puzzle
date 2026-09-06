@@ -1,1 +1,1 @@
-open('/home/workdir/artifacts/script_new.js').read()
+PLACEHOLDER
