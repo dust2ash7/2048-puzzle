@@ -122,12 +122,16 @@
       run: run !== null ? run : (started ? null : pendingRun),
     }));
   }
+  function isResumable(run) {
+    if (!run || !run.board) return false;
+    if (run.mode === "daily" && run.dailyDate !== utcDate()) return false;
+    return true;
+  }
   function resumeRun(raw) {
     const run = raw && raw.run;
-    if (!run || !run.board) return false;
+    if (!isResumable(run)) return false;
     if (run.mode === "daily") {
       const today = utcDate();
-      if (run.dailyDate !== today) return false;
       if (daily.date !== today) daily = { date: today, best: 0 };
       rng = makeRng(hashSeed("2048-daily-" + today));
       if (run.rngState != null) rng.state = run.rngState;
@@ -605,6 +609,30 @@
     else move(dy > 0 ? "down" : "up");
   }
   let startX = 0, startY = 0;
+  function showResumeOffer(run) {
+    const offer = $("resume-offer");
+    const fresh = $("start-fresh");
+    const copy = $("resume-copy");
+    if (!offer || !fresh) return;
+    const modeLabel = run.mode === "daily" ? "Daily" : "Classic";
+    const hi = Math.max(2, ...run.board.flat().filter(Boolean).map((c) => c.value));
+    copy.textContent = modeLabel + " run in progress — score " + (run.score || 0) + ", best tile " + hi + ". Resume or start a new game?";
+    offer.hidden = false;
+    fresh.hidden = true;
+    showOverlay(els.start);
+    announce("Saved game found. Choose Resume or New Game.");
+  }
+  function showFreshStart() {
+    const offer = $("resume-offer");
+    const fresh = $("start-fresh");
+    if (offer) offer.hidden = true;
+    if (fresh) fresh.hidden = false;
+    showOverlay(els.start);
+  }
+  function discardPendingRun() {
+    pendingRun = null;
+    save();
+  }
   function bindUi() {
     document.addEventListener("keydown", onKey);
     els.board.addEventListener("touchstart", (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, { passive: true });
@@ -614,8 +642,24 @@
     els.undo.addEventListener("click", doUndo);
     els.modeClassic.addEventListener("click", () => { if (mode !== "classic") { if (!confirmNewGame()) return; musicStop(); newGame("classic"); musicStart(); } });
     els.modeDaily.addEventListener("click", () => { if (mode !== "daily") { if (!confirmNewGame()) return; musicStop(); newGame("daily"); musicStart(); } });
-    $("start-classic").addEventListener("click", () => { hideOverlay(els.start); started = true; newGame("classic"); musicStart(); });
-    $("start-daily").addEventListener("click", () => { hideOverlay(els.start); started = true; newGame("daily"); musicStart(); });
+    $("start-classic").addEventListener("click", () => { discardPendingRun(); hideOverlay(els.start); started = true; newGame("classic"); musicStart(); });
+    $("start-daily").addEventListener("click", () => { discardPendingRun(); hideOverlay(els.start); started = true; newGame("daily"); musicStart(); });
+    $("start-resume").addEventListener("click", () => {
+      const ok = resumeRun({ run: pendingRun });
+      if (!ok) {
+        discardPendingRun();
+        showFreshStart();
+        announce("Saved game could not be restored.");
+        return;
+      }
+      save();
+      musicStart();
+    });
+    $("start-discard").addEventListener("click", () => {
+      discardPendingRun();
+      showFreshStart();
+      announce("Saved game discarded. Choose Classic or Daily.");
+    });
     $("win-continue").addEventListener("click", () => { continued = true; hideOverlay(els.win); });
     $("win-new").addEventListener("click", () => { if (!confirmNewGame()) return; musicStop(); hideOverlay(els.win); newGame(); musicStart(); });
     $("win-undo").addEventListener("click", doUndo);
@@ -644,12 +688,13 @@
   refreshMeters(0);
   bindUi();
   registerSw();
-  const resumed = resumeRun(stored);
-  if (!resumed) pendingRun = null;
+  if (isResumable(pendingRun)) {
+    showResumeOffer(pendingRun);
+  } else {
+    pendingRun = null;
+    save();
+    showFreshStart();
+  }
   updateModeUi();
   refreshMeters(0);
-  if (resumed) {
-    save();
-    musicStart();
-  }
 })();
