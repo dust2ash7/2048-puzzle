@@ -1,4 +1,4 @@
-const CACHE = "2048-premium-v9";
+const CACHE = "2048-premium-v10";
 const SHELL = [
   "./",
   "./index.html",
@@ -6,7 +6,8 @@ const SHELL = [
   "./script.js",
   "./manifest.json",
   "./icon-192.svg",
-  "./icon-512.svg"
+  "./icon-512.svg",
+  "./audio/music-bed.mp3"
 ];
 
 self.addEventListener("install", (event) => {
