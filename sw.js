@@ -1,4 +1,4 @@
-const CACHE = "2048-premium-v10";
+const CACHE = "2048-premium-v11";
 const SHELL = [
   "./",
   "./index.html",
