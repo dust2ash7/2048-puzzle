@@ -102,7 +102,7 @@
     if (!started || over) return null;
     return {
       mode,
-      score,
+      score: score|0,
       won,
       continued,
       idSeq,
@@ -140,7 +140,7 @@
     }
     mode = run.mode === "daily" ? "daily" : "classic";
     board = run.board.map((row) => row.map((c) => (c ? { id: c.id, value: c.value } : null)));
-    score = run.score || 0;
+    score = Number(run.score) || 0;
     won = !!run.won;
     continued = !!run.continued;
     over = false;
@@ -159,6 +159,8 @@
       showOverlay(els.win);
     }
     pendingRun = null;
+    updateModeUi();
+    refreshMeters(0);
     announce(mode === "daily" ? "Daily challenge resumed." : "Game resumed.");
     return true;
   }
