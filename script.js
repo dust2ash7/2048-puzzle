@@ -82,6 +82,7 @@
     };
   }
   function rand() { return rng ? rng.next() : Math.random(); }
+  let pendingRun = null;
   function load() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORE) || "{}");
@@ -90,9 +91,103 @@
       else daily = { date: utcDate(), best: 0 };
       if (raw.theme) theme = raw.theme;
       muted = !!raw.muted;
-    } catch (_) {}
+      pendingRun = raw.run || null;
+      return raw;
+    } catch (_) {
+      pendingRun = null;
+      return {};
+    }
   }
-  function save() { localStorage.setItem(STORE, JSON.stringify({ stats, daily, theme, muted })); }
+  function captureRun() {
+    if (!started || over) return null;
+    return {
+      mode,
+      score,
+      won,
+      continued,
+      idSeq,
+      countedGame,
+      board: board.map((row) => row.map((c) => (c ? { id: c.id, value: c.value } : null))),
+      rngState: rng ? rng.state : null,
+      dailyDate: mode === "daily" ? utcDate() : null,
+    };
+  }
+  function save() {
+    const run = captureRun();
+    localStorage.setItem(STORE, JSON.stringify({
+      stats,
+      daily,
+      theme,
+      muted,
+      run: run !== null ? run : (started ? null : pendingRun),
+    }));
+  }
+  function resumeRun(raw) {
+    const run = raw && raw.run;
+    if (!run || !run.board) return false;
+    if (run.mode === "daily") {
+      const today = utcDate();
+      if (run.dailyDate !== today) return false;
+      if (daily.date !== today) daily = { date: today, best: 0 };
+      rng = makeRng(hashSeed("2048-daily-" + today));
+      if (run.rngState != null) rng.state = run.rngState;
+    } else {
+      rng = null;
+    }
+    mode = run.mode === "daily" ? "daily" : "classic";
+    board = run.board.map((row) => row.map((c) => (c ? { id: c.id, value: c.value } : null)));
+    score = run.score || 0;
+    won = !!run.won;
+    continued = !!run.continued;
+    over = false;
+    idSeq = run.idSeq || 1;
+    countedGame = !!run.countedGame;
+    busy = false;
+    started = true;
+    setUndo(null);
+    rebuildTiles();
+    hideOverlay(els.start);
+    hideOverlay(els.win);
+    hideOverlay(els.over);
+    if (won && !continued) {
+      const hi = highestTile();
+      els.winCopy.textContent = "You reached " + hi + ". Score " + score + ". Keep sliding, or start a fresh grid.";
+      showOverlay(els.win);
+    }
+    pendingRun = null;
+    announce(mode === "daily" ? "Daily challenge resumed." : "Game resumed.");
+    return true;
+  }
+  function confirmNewGame() {
+    if (score > 0 && !window.confirm("Start a new game? Your current progress will be lost.")) {
+      return false;
+    }
+    return true;
+  }
+  function shareText() {
+    const hi = highestTile();
+    const bit = mode === "daily" ? "Daily " + utcDate() + " · " : "";
+    return "2048 Premium — " + bit + "score " + score + ", best tile " + hi + ". https://dust2ash7.github.io/2048-puzzle/";
+  }
+  async function shareResult() {
+    const text = shareText();
+    const url = "https://dust2ash7.github.io/2048-puzzle/";
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: "2048 Premium", text, url });
+        announce("Shared.");
+        return;
+      }
+    } catch (err) {
+      if (err && err.name === "AbortError") return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      announce("Copied to clipboard.");
+    } catch (_) {
+      announce("Could not copy result.");
+    }
+  }
   function applyTheme(name) {
     theme = name;
     els.html.setAttribute("data-theme", name);
@@ -402,6 +497,7 @@
     $("stat-daily").textContent = daily.date === utcDate() ? String(daily.best) : "-";
   }
   function newGame(nextMode) {
+    pendingRun = null;
     mode = nextMode || mode;
     if (mode === "daily") {
       const today = utcDate();
@@ -437,6 +533,7 @@
       els.overCopy.textContent = "Final score " + score + ". Highest tile " + hi + ".";
       showOverlay(els.over);
       announce("Game over. Score " + score + ".");
+      save();
     }
     busy = false;
     els.undo.disabled = !undoSnap;
@@ -513,17 +610,19 @@
     els.board.addEventListener("touchstart", (e) => { startX = e.touches[0].clientX; startY = e.touches[0].clientY; }, { passive: true });
     els.board.addEventListener("touchend", onSwipe, { passive: true });
     els.mute.addEventListener("click", () => setMuted(!muted));
-    els.neu.addEventListener("click", () => { musicStop(); newGame(); musicStart(); });
+    els.neu.addEventListener("click", () => { if (!confirmNewGame()) return; musicStop(); newGame(); musicStart(); });
     els.undo.addEventListener("click", doUndo);
-    els.modeClassic.addEventListener("click", () => { if (mode !== "classic") { musicStop(); newGame("classic"); musicStart(); } });
-    els.modeDaily.addEventListener("click", () => { if (mode !== "daily") { musicStop(); newGame("daily"); musicStart(); } });
+    els.modeClassic.addEventListener("click", () => { if (mode !== "classic") { if (!confirmNewGame()) return; musicStop(); newGame("classic"); musicStart(); } });
+    els.modeDaily.addEventListener("click", () => { if (mode !== "daily") { if (!confirmNewGame()) return; musicStop(); newGame("daily"); musicStart(); } });
     $("start-classic").addEventListener("click", () => { hideOverlay(els.start); started = true; newGame("classic"); musicStart(); });
     $("start-daily").addEventListener("click", () => { hideOverlay(els.start); started = true; newGame("daily"); musicStart(); });
     $("win-continue").addEventListener("click", () => { continued = true; hideOverlay(els.win); });
-    $("win-new").addEventListener("click", () => { musicStop(); hideOverlay(els.win); newGame(); musicStart(); });
+    $("win-new").addEventListener("click", () => { if (!confirmNewGame()) return; musicStop(); hideOverlay(els.win); newGame(); musicStart(); });
     $("win-undo").addEventListener("click", doUndo);
-    $("over-new").addEventListener("click", () => { musicStop(); hideOverlay(els.over); newGame(); musicStart(); });
+    $("win-share").addEventListener("click", () => { shareResult(); });
+    $("over-new").addEventListener("click", () => { if (!confirmNewGame()) return; musicStop(); hideOverlay(els.over); newGame(); musicStart(); });
     $("over-undo").addEventListener("click", doUndo);
+    $("over-share").addEventListener("click", () => { shareResult(); });
     $("btn-stats").addEventListener("click", () => { fillStatsPanel(); showOverlay(els.stats); });
     $("stats-close").addEventListener("click", () => hideOverlay(els.stats));
     document.querySelectorAll(".swatch").forEach((btn) => btn.addEventListener("click", () => applyTheme(btn.dataset.themeId)));
@@ -540,9 +639,17 @@
       navigator.serviceWorker.register("./sw.js").catch(() => {});
     }
   }
-  load();
+  const stored = load();
   updateModeUi();
   refreshMeters(0);
   bindUi();
   registerSw();
+  const resumed = resumeRun(stored);
+  if (!resumed) pendingRun = null;
+  updateModeUi();
+  refreshMeters(0);
+  if (resumed) {
+    save();
+    musicStart();
+  }
 })();
