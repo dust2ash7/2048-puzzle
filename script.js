@@ -44,14 +44,14 @@
   let undoSnap = null;
   let audioCtx = null;
   let masterGain = null;
-  let musicGain = null;
-  let musicNodes = [];
-  let musicTimer = null;
+  let musicEl = null;
   let musicStarted = false;
+  let musicWanted = false;
   let muted = false;
   let theme = "obsidian";
-  const MUSIC_VOL = 0.12;
+  const MUSIC_VOL = 0.14;
   const MASTER_VOL = 0.7;
+  const MUSIC_SRC = "./audio/music-bed.mp3";
   const stats = { bestScore: 0, bestTile: 2, gamesPlayed: 0, wins: 0 };
   let daily = { date: utcDate(), best: 0 };
   let countedGame = false;
@@ -212,6 +212,15 @@
     els.iconSound.classList.toggle("is-hidden", muted);
     els.iconMute.classList.toggle("is-hidden", !muted);
     if (masterGain) masterGain.gain.value = muted ? 0 : MASTER_VOL;
+    if (musicEl) {
+      if (muted) {
+        musicEl.pause();
+      } else if (musicWanted) {
+        musicEl.volume = over ? 0.03 : MUSIC_VOL;
+        const p = musicEl.play();
+        if (p && typeof p.catch === "function") p.catch(() => {});
+      }
+    }
     save();
   }
   function ensureAudio() {
@@ -222,94 +231,47 @@
         masterGain = audioCtx.createGain();
         masterGain.gain.value = muted ? 0 : MASTER_VOL;
         masterGain.connect(audioCtx.destination);
-        musicGain = audioCtx.createGain();
-        musicGain.gain.value = 0.0001;
-        musicGain.connect(masterGain);
       }
     }
     if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
   }
-  function fadeMusic(to, dur) {
-    if (!musicGain || !audioCtx) return;
-    const t0 = audioCtx.currentTime;
-    const g = musicGain.gain;
-    g.cancelScheduledValues(t0);
-    g.setValueAtTime(Math.max(0.0001, g.value), t0);
-    g.linearRampToValueAtTime(Math.max(0.0001, to), t0 + dur);
+  function ensureMusicEl() {
+    if (musicEl) return musicEl;
+    const el = new Audio(MUSIC_SRC);
+    el.loop = true;
+    el.preload = "auto";
+    el.volume = MUSIC_VOL;
+    musicEl = el;
+    return el;
   }
   function musicStop() {
-    if (musicTimer) { clearTimeout(musicTimer); musicTimer = null; }
-    musicNodes.forEach((n) => {
-      try { n.stop(); } catch (_) {}
-      try { n.disconnect(); } catch (_) {}
-    });
-    musicNodes = [];
+    musicWanted = false;
     musicStarted = false;
-    if (musicGain) musicGain.gain.value = 0.0001;
+    if (musicEl) {
+      try { musicEl.pause(); } catch (_) {}
+      try { musicEl.currentTime = 0; } catch (_) {}
+    }
   }
   function musicStart() {
+    musicWanted = true;
     ensureAudio();
-    if (!audioCtx || !musicGain || muted) return;
-    if (!musicStarted) {
-      const ctx = audioCtx;
-      const dest = musicGain;
-      const filter = ctx.createBiquadFilter();
-      filter.type = "lowpass";
-      filter.frequency.value = 2200;
-      filter.Q.value = 0.5;
-      filter.connect(dest);
-      musicNodes.push(filter);
-      const chords = [
-        [261.63, 329.63, 392.00, 493.88],
-        [220.00, 261.63, 329.63, 415.30],
-        [174.61, 220.00, 261.63, 349.23],
-        [196.00, 246.94, 293.66, 349.23],
-      ];
-      const walk = [0, 2, 1, 3, 2, 0, 3, 1];
-      const noteDur = 0.17;
-      let tick = 0;
-      let nextTime = ctx.currentTime + 0.04;
-      function pluck(freq, when, vol, type) {
-        const o = ctx.createOscillator();
-        const g = ctx.createGain();
-        o.type = type;
-        o.frequency.setValueAtTime(freq, when);
-        g.gain.setValueAtTime(0.0001, when);
-        g.gain.linearRampToValueAtTime(vol, when + 0.01);
-        g.gain.exponentialRampToValueAtTime(0.0001, when + noteDur * 1.55);
-        o.connect(g).connect(filter);
-        o.start(when);
-        o.stop(when + noteDur * 1.65);
-        musicNodes.push(o);
-        if (musicNodes.length > 48) {
-          const drop = musicNodes.splice(1, 16);
-          drop.forEach((n) => { try { n.disconnect(); } catch (_) {} });
-        }
-      }
-      function schedule() {
-        if (!musicStarted) return;
-        const horizon = ctx.currentTime + 0.4;
-        while (nextTime < horizon) {
-          const chord = chords[Math.floor(tick / walk.length) % chords.length];
-          const idx = walk[tick % walk.length];
-          pluck(chord[idx], nextTime, 0.11, "triangle");
-          if (tick % 8 === 0) pluck(chord[0] * 0.5, nextTime, 0.08, "sine");
-          tick += 1;
-          nextTime += noteDur;
-        }
-        musicTimer = setTimeout(schedule, 110);
-      }
+    if (muted) return;
+    const el = ensureMusicEl();
+    el.volume = MUSIC_VOL;
+    const p = el.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => { musicStarted = true; }).catch(() => { musicStarted = false; });
+    } else {
       musicStarted = true;
-      schedule();
     }
-    fadeMusic(MUSIC_VOL, 0.55);
   }
   function duckMusic(level, holdMs) {
-    if (!musicStarted || muted) return;
-    fadeMusic(level, 0.12);
+    if (!musicWanted || muted || !musicEl) return;
+    musicEl.volume = Math.max(0, Math.min(1, level));
     setTimeout(() => {
-      if (musicStarted && !muted && !over) fadeMusic(MUSIC_VOL, 0.5);
-      else if (musicStarted && !muted && over) fadeMusic(0.03, 0.3);
+      if (!musicWanted || muted || !musicEl) return;
+      if (!over) musicEl.volume = MUSIC_VOL;
+      else musicEl.volume = 0.03;
     }, holdMs);
   }
   function tone(freq, dur, type, vol, delay) {
