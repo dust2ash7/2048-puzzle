@@ -97,7 +97,14 @@
         <li><span>02</span> Equal values fuse once into their sum. A 2 (or sometimes a 4) appears.</li>
         <li><span>03</span> Daily uses the same seeded opening for everyone, by UTC date.</li>
       </ul>
-      <div class="cta-row">
+      <div id="resume-offer" hidden>
+        <p class="lede" id="resume-copy">You have a game in progress.</p>
+        <div class="cta-row">
+          <button type="button" id="start-resume" class="btn btn-primary btn-wide">Resume</button>
+          <button type="button" id="start-discard" class="btn btn-wide">New Game</button>
+        </div>
+      </div>
+      <div id="start-fresh" class="cta-row">
         <button type="button" id="start-classic" class="btn btn-primary btn-wide">Play Classic</button>
         <button type="button" id="start-daily" class="btn btn-wide">Daily Challenge</button>
       </div>
@@ -146,6 +153,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=resume3"></script>
+  <script src="script.js?v=resume4"></script>
 </body>
 </html>
