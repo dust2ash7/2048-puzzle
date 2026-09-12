@@ -539,10 +539,122 @@ body {
   .board { --gap: 12px; --radius: 16px; }
 }
 
+
+/* —— Effects Director juice overlays (tile shapes unchanged) —— */
+.fx-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.spark {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--spark, var(--accent));
+  box-shadow: 0 0 8px color-mix(in srgb, var(--spark, var(--accent)) 70%, transparent);
+  opacity: 0.95;
+  animation: sparkFly var(--spark-ms, 420ms) var(--ease-out) forwards;
+  will-change: transform, opacity;
+}
+.soft-ring {
+  position: absolute;
+  inset: 8%;
+  border-radius: var(--radius);
+  border: 2px solid color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: 0 0 18px var(--glow);
+  opacity: 0;
+  animation: softRing 520ms var(--ease-out) forwards;
+  pointer-events: none;
+  z-index: 4;
+}
+.float-score {
+  position: absolute;
+  z-index: 7;
+  font-family: var(--font-ui);
+  font-weight: 700;
+  font-size: clamp(0.85rem, 4.5cqi, 1.15rem);
+  color: var(--accent);
+  text-shadow: 0 1px 8px color-mix(in srgb, var(--bg) 55%, transparent);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  animation: floatScore 780ms var(--ease-out) forwards;
+  white-space: nowrap;
+}
+.confetti {
+  position: absolute;
+  width: 7px;
+  height: 11px;
+  border-radius: 2px;
+  background: var(--confetti, var(--accent));
+  opacity: 0.95;
+  animation: confettiFall var(--c-ms, 1100ms) var(--ease-out) forwards;
+  will-change: transform, opacity;
+}
+.board.is-shake-sm { animation: boardShakeSm 80ms var(--ease-out); }
+.board.is-shake-lg { animation: boardShakeLg 120ms var(--ease-out); }
+.board.is-pulse { animation: boardPulse 900ms var(--ease-pop); }
+.board.is-hitstop .tile { transition: none !important; }
+.board.is-over-juice { animation: overDim 700ms var(--ease-out); }
+
+@keyframes sparkFly {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0.15); opacity: 0; }
+}
+@keyframes softRing {
+  0% { transform: scale(0.55); opacity: 0.85; }
+  100% { transform: scale(1.35); opacity: 0; }
+}
+@keyframes floatScore {
+  0% { opacity: 0; transform: translate(-50%, -30%) scale(0.85); }
+  18% { opacity: 1; transform: translate(-50%, -55%) scale(1.05); }
+  100% { opacity: 0; transform: translate(-50%, -140%) scale(1); }
+}
+@keyframes confettiFall {
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.6); opacity: 0; }
+}
+@keyframes boardShakeSm {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(-2px, 1px); }
+  50% { transform: translate(2px, -1px); }
+  75% { transform: translate(-1px, 0); }
+}
+@keyframes boardShakeLg {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 2px); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-3px, 1px); }
+  80% { transform: translate(2px, -1px); }
+}
+@keyframes boardPulse {
+  0% { box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04); }
+  40% { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 55%, transparent), 0 0 48px var(--glow), var(--shadow); }
+  100% { box-shadow: var(--shadow), inset 0 1px 0 rgba(255,255,255,.04); }
+}
+@keyframes overDim {
+  0% { filter: none; }
+  35% { filter: saturate(0.85) brightness(0.92); }
+  100% { filter: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root { --move: 1ms; }
   .tile.is-new .tile-face,
   .tile.is-merge .tile-face,
   .score-pop.is-on,
-  .overlay { animation: none; transition: none; }
+  .overlay,
+  .spark,
+  .soft-ring,
+  .float-score,
+  .confetti,
+  .board.is-shake-sm,
+  .board.is-shake-lg,
+  .board.is-pulse,
+  .board.is-over-juice { animation: none; transition: none; }
+  .spark, .confetti, .soft-ring { display: none; }
 }
