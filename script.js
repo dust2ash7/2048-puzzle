@@ -303,6 +303,169 @@
       [392, 330, 262, 196].forEach((f, i) => tone(f, 0.22, "sine", 0.05, i * 0.1));
     }
   }
+
+  function ensureFxLayer() {
+    let layer = els.board.querySelector(".fx-layer");
+    if (!layer) {
+      layer = document.createElement("div");
+      layer.className = "fx-layer";
+      layer.setAttribute("aria-hidden", "true");
+      els.board.appendChild(layer);
+    }
+    return layer;
+  }
+  function cellCenter(r, c) {
+    const gap = parseFloat(getComputedStyle(els.board).getPropertyValue("--gap")) || 10;
+    const rect = els.board.getBoundingClientRect();
+    const pad = gap;
+    const inner = Math.min(rect.width, rect.height) - pad * 2;
+    const cell = (inner - gap * 3) / 4;
+    const x = pad + c * (cell + gap) + cell / 2;
+    const y = pad + r * (cell + gap) + cell / 2;
+    return { x, y, cell };
+  }
+  function tileAccent(value) {
+    const face = document.createElement("div");
+    face.className = "tile-face tile-v" + value;
+    face.style.position = "absolute";
+    face.style.visibility = "hidden";
+    face.style.pointerEvents = "none";
+    els.board.appendChild(face);
+    const bg = getComputedStyle(face).backgroundColor;
+    face.remove();
+    return bg || getComputedStyle(els.html).getPropertyValue("--accent").trim() || "#e2a35a";
+  }
+  function themeAccentColors() {
+    const cs = getComputedStyle(els.html);
+    const keys = ["--accent", "--v8", "--v16", "--v32", "--v64", "--v128", "--v256", "--v512"];
+    return keys.map((k) => cs.getPropertyValue(k).trim()).filter(Boolean);
+  }
+  function spawnSparks(r, c, value) {
+    if (reduced) return;
+    const layer = ensureFxLayer();
+    const { x, y } = cellCenter(r, c);
+    const color = tileAccent(value);
+    const n = Math.max(8, Math.round(8 + Math.log2(Math.max(value, 2))));
+    for (let i = 0; i < n; i++) {
+      const p = document.createElement("span");
+      p.className = "spark";
+      const ang = (Math.PI * 2 * i) / n + (Math.random() - 0.5) * 0.4;
+      const dist = 18 + Math.random() * 28 + Math.min(24, Math.log2(value) * 2);
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+      p.style.setProperty("--spark", color);
+      p.style.setProperty("--dx", Math.cos(ang) * dist + "px");
+      p.style.setProperty("--dy", Math.sin(ang) * dist + "px");
+      p.style.setProperty("--spark-ms", 380 + Math.random() * 120 + "ms");
+      layer.appendChild(p);
+      setTimeout(() => p.remove(), 560);
+    }
+  }
+  function spawnSoftRing(tileWrap) {
+    if (reduced || !tileWrap) return;
+    const ring = document.createElement("span");
+    ring.className = "soft-ring";
+    ring.setAttribute("aria-hidden", "true");
+    tileWrap.appendChild(ring);
+    setTimeout(() => ring.remove(), 560);
+  }
+  function floatMergeScore(r, c, value) {
+    const layer = ensureFxLayer();
+    const { x, y } = cellCenter(r, c);
+    const el = document.createElement("span");
+    el.className = "float-score";
+    el.textContent = "+" + value;
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+    layer.appendChild(el);
+    setTimeout(() => el.remove(), reduced ? 50 : 820);
+  }
+  function boardShakeFor(value) {
+    if (reduced) return;
+    let cls = null;
+    let ms = 0;
+    if (value >= 512) { cls = "is-shake-lg"; ms = 120; }
+    else if (value >= 128) { cls = "is-shake-sm"; ms = 80; }
+    if (!cls) return;
+    els.board.classList.remove("is-shake-sm", "is-shake-lg");
+    void els.board.offsetWidth;
+    els.board.classList.add(cls);
+    setTimeout(() => els.board.classList.remove(cls), ms + 20);
+  }
+  function hitstopMs(merges) {
+    if (reduced) return 0;
+    let maxV = 0;
+    for (const m of merges) if (m.value > maxV) maxV = m.value;
+    if (maxV >= 256) {
+      els.board.classList.add("is-hitstop");
+      setTimeout(() => els.board.classList.remove("is-hitstop"), 30);
+      return 30;
+    }
+    return 0;
+  }
+  function playMergeJuice(merges) {
+    if (!merges || !merges.length) return 0;
+    let maxV = 0;
+    for (const m of merges) {
+      if (m.value > maxV) maxV = m.value;
+      spawnSparks(m.r, m.c, m.value);
+      floatMergeScore(m.r, m.c, m.value);
+    }
+    boardShakeFor(maxV);
+    return hitstopMs(merges);
+  }
+  function winFlourish(done) {
+    if (!reduced) {
+      els.board.classList.remove("is-pulse");
+      void els.board.offsetWidth;
+      els.board.classList.add("is-pulse");
+      setTimeout(() => els.board.classList.remove("is-pulse"), 920);
+      const layer = ensureFxLayer();
+      const colors = themeAccentColors();
+      const rect = els.board.getBoundingClientRect();
+      const n = 48;
+      for (let i = 0; i < n; i++) {
+        const bit = document.createElement("span");
+        bit.className = "confetti";
+        const x = Math.random() * rect.width;
+        const y = Math.random() * rect.height * 0.35;
+        bit.style.left = x + "px";
+        bit.style.top = y + "px";
+        bit.style.setProperty("--confetti", colors[i % colors.length] || "var(--accent)");
+        bit.style.setProperty("--dx", (Math.random() - 0.5) * 160 + "px");
+        bit.style.setProperty("--dy", 80 + Math.random() * 220 + "px");
+        bit.style.setProperty("--rot", (Math.random() * 520 - 260) + "deg");
+        bit.style.setProperty("--c-ms", 900 + Math.random() * 400 + "ms");
+        layer.appendChild(bit);
+        setTimeout(() => bit.remove(), 1400);
+      }
+    }
+    setTimeout(done, reduced ? 0 : 1000);
+  }
+  function overJuice() {
+    if (reduced) return;
+    els.board.classList.remove("is-over-juice");
+    void els.board.offsetWidth;
+    els.board.classList.add("is-over-juice");
+    setTimeout(() => els.board.classList.remove("is-over-juice"), 720);
+    const layer = ensureFxLayer();
+    const { x, y } = cellCenter(1.5, 1.5);
+    const color = getComputedStyle(els.html).getPropertyValue("--muted").trim() || "#888";
+    for (let i = 0; i < 12; i++) {
+      const p = document.createElement("span");
+      p.className = "spark";
+      const ang = (Math.PI * 2 * i) / 12;
+      p.style.left = x + "px";
+      p.style.top = y + "px";
+      p.style.setProperty("--spark", color);
+      p.style.setProperty("--dx", Math.cos(ang) * 36 + "px");
+      p.style.setProperty("--dy", Math.sin(ang) * 36 + "px");
+      p.style.opacity = "0.55";
+      layer.appendChild(p);
+      setTimeout(() => p.remove(), 500);
+    }
+  }
+
   function announce(msg) { els.live.textContent = msg; }
   function snapshot() {
     return {
@@ -408,6 +571,7 @@
     els.tiles.appendChild(wrap);
     wrap.offsetHeight;
     wrap.classList.remove("no-trans");
+    if (extraClass && extraClass.split(/\s+/).includes("is-new")) spawnSoftRing(wrap);
     return wrap;
   }
   function paintFace(el, value) {
@@ -493,12 +657,18 @@
       won = true; stats.wins += 1; save();
       sfx("win"); duckMusic(0.04, 1200);
       els.winCopy.textContent = "You reached " + hi + ". Score " + score + ". Keep sliding, or start a fresh grid.";
-      showOverlay(els.win);
       announce("You win. Score " + score + ".");
       if (locked) over = true;
+      winFlourish(() => {
+        showOverlay(els.win);
+        busy = false;
+        els.undo.disabled = !undoSnap;
+      });
+      return;
     } else if (locked) {
       over = true; sfx("over"); duckMusic(0.03, 1500);
       els.overCopy.textContent = "Final score " + score + ". Highest tile " + hi + ".";
+      overJuice();
       showOverlay(els.over);
       announce("Game over. Score " + score + ".");
       save();
@@ -539,6 +709,7 @@
       const el = tileEl(a.id);
       if (el) { el.classList.add("is-absorbed"); setTimeout(() => el.remove(), animMs); }
     }
+    const stopMs = playMergeJuice(result.merges);
     const spawned = spawn();
     if (spawned) {
       makeTile(spawned.tile.id, spawned.tile.value, spawned.r, spawned.c, "is-new");
@@ -548,7 +719,7 @@
     setTimeout(() => {
       if (gen !== moveGen) return;
       afterMove(result.merges, result.scoreDelta, spawned);
-    }, animMs);
+    }, animMs + stopMs);
   }
   function findId(id) {
     for (let r = 0; r < SIZE; r++) for (let c = 0; c < SIZE; c++) if (board[r][c] && board[r][c].id === id) return [r, c];
