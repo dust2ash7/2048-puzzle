@@ -658,3 +658,32 @@ body {
   .board.is-over-juice { animation: none; transition: none; }
   .spark, .confetti, .soft-ring { display: none; }
 }
+
+
+/* Raven Flock v4 — corner watermark (optional, quiet) */
+.raven-watermark {
+  position: fixed;
+  right: 12px;
+  bottom: 12px;
+  width: 72px;
+  height: auto;
+  max-height: 48px;
+  opacity: 0.10;
+  pointer-events: none;
+  z-index: 2;
+  object-fit: contain;
+}
+.avatar.brand-mark {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  border-radius: 0.55rem;
+  background: rgba(245, 240, 230, 0.08);
+}
+.raven-foot {
+  margin: 1.25rem 0 0;
+  text-align: center;
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--muted, #a89a88) 85%, transparent);
+}

@@ -1,8 +1,16 @@
+<p align="center">
+  <img src="brand/logo-c.png" alt="Raven Flock" width="280" />
+</p>
+
+<p align="center"><strong>Raven Flock — Consider the ravens.</strong></p>
+
+---
+
 # 2048 Premium
 
 A flagship-quality remake of 2048: editorial type, butter-smooth tiles, themes, a UTC daily challenge, and a working PWA. No accounts, no ads, no paywall.
 
-![2048](avatar.jpg)
+![2048](brand/logo-c.png)
 
 ### [Play live](https://dust2ash7.github.io/2048-puzzle/)
 
@@ -60,4 +68,4 @@ If you fork it, enable Pages on the `main` branch (root).
 | `style.css` | Theme system, board, motion |
 | `script.js` | Rules, input, audio, persistence |
 | `manifest.json` / `sw.js` | Installable app shell |
-| `avatar.jpg` | Icon / brand mark |
+| `brand/logo-c.png` | Icon / brand mark |
