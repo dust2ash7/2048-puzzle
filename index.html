@@ -10,8 +10,9 @@
   <meta name="apple-mobile-web-app-title" content="2048">
   <title>2048 — Premium</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="icon" href="icon-192.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon-192.svg">
+  <link rel="icon" href="favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="icon" href="icon-192.png" type="image/png" sizes="192x192">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" sizes="180x180">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Sora:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -19,12 +20,13 @@
 </head>
 <body>
   <div class="grain" aria-hidden="true"></div>
+  <img class="raven-watermark" src="assets/brand/raven-flock-mark-only.svg" alt="" aria-hidden="true" width="120" height="79">
   <div id="live" class="sr-only" aria-live="polite" aria-atomic="true"></div>
 
   <main class="shell">
     <header class="topbar">
       <div class="brand">
-        <img src="icon-192.svg" alt="" class="avatar" width="48" height="48">
+        <img src="assets/brand/raven-flock-mark-only.svg" alt="" class="avatar brand-mark" width="40" height="40">
         <div class="brand-copy">
           <h1 class="wordmark">2048</h1>
           <p class="eyebrow">Slide · Merge · Ascend</p>
@@ -85,6 +87,7 @@
       <button type="button" id="btn-new" class="btn btn-primary">New Game</button>
     </div>
     <p class="hint">Arrows or WASD · swipe the board · U to undo</p>
+    <p class="raven-foot">Raven Flock — you matter.</p>
   </main>
 
   <div id="start-overlay" class="overlay is-open" role="dialog" aria-modal="true" aria-labelledby="start-title">
@@ -153,6 +156,6 @@
     </div>
   </div>
 
-  <script src="script.js?v=mix16"></script>
+  <script src="script.js?v=mix14"></script>
 </body>
 </html>

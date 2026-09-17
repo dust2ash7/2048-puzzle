@@ -1,4 +1,4 @@
-const CACHE = "2048-premium-v16";
+const CACHE = "2048-premium-v17";
 const SHELL = [
   "./",
   "./index.html",
@@ -7,6 +7,13 @@ const SHELL = [
   "./manifest.json",
   "./icon-192.svg",
   "./icon-512.svg",
+  "./favicon-32.png",
+  "./icon-192.png",
+  "./icon-512.png",
+  "./icon-192-maskable.png",
+  "./icon-512-maskable.png",
+  "./apple-touch-icon.png",
+  "./assets/brand/raven-flock-mark-only.svg",
 ];
 
 self.addEventListener("install", (event) => {
