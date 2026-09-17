@@ -49,8 +49,8 @@
   let musicWanted = false;
   let muted = false;
   let theme = "obsidian";
-  const MUSIC_VOL = 0.14;
-  const MASTER_VOL = 0.7;
+  const MUSIC_VOL = 0.05;
+  const MASTER_VOL = 1.0;
   const MUSIC_SRC = "./audio/music-bed.mp3";
   const stats = { bestScore: 0, bestTile: 2, gamesPlayed: 0, wins: 0 };
   let daily = { date: utcDate(), best: 0 };
@@ -223,7 +223,7 @@
     }
     save();
   }
-  function ensureAudio() {
+  async function ensureAudio() {
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
       if (Ctx) audioCtx = new Ctx();
@@ -233,7 +233,7 @@
         masterGain.connect(audioCtx.destination);
       }
     }
-    if (audioCtx && audioCtx.state === "suspended") audioCtx.resume();
+    if (audioCtx && audioCtx.state === "suspended") await audioCtx.resume();
   }
   function ensureMusicEl() {
     if (musicEl) return musicEl;
@@ -291,6 +291,7 @@
     if (muted) return;
     ensureAudio();
     if (!audioCtx) return;
+    if (kind === "move" || kind === "merge" || kind === "spawn") duckMusic(0.025, 160);
     if (kind === "move") tone(240, 0.08, "sine", 0.05);
     else if (kind === "spawn") tone(520, 0.07, "triangle", 0.04);
     else if (kind === "merge") {
