@@ -239,7 +239,7 @@
     if (musicEl) return musicEl;
     const el = new Audio(MUSIC_SRC);
     el.loop = true;
-    el.preload = "auto";
+    el.preload = "none";
     el.volume = MUSIC_VOL;
     musicEl = el;
     return el;
