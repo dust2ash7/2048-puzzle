@@ -1,6 +1,6 @@
 # Music credits — 2048-puzzle
 
-## music-bed.mp3
+## In-game music bed
 
 | Field | Value |
 |-------|-------|
@@ -9,5 +9,5 @@
 | **License** | CC0 1.0 (Public Domain Dedication) |
 | **Source URL** | https://opengameart.org/content/happy-clappy-loop |
 | **Source file** | HappyClappyLoop.wav |
-| **Local filename** | music-bed.mp3 |
-| **Notes** | Seamless ~17.4s game loop from the short film Cat's Sky. CC0. Encoded to stereo 112 kbps MP3 with loudnorm (I=-16, TP=-3) to match the previous bed. HTML Audio element loops this file. |
+| **Playback** | Streamed from OpenGameArt (`HappyClappyLoop.wav`, ~17.4s seamless loop) |
+| **Notes** | Replaced Cozy Puzzle In-Game 1. CC0, no attribution required. From the short film Cat's Sky, adapted as a game loop. |
