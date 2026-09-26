@@ -6,15 +6,11 @@
 
 ---
 
-# 2048 Premium
+# 2048
 
-A flagship-quality remake of 2048: editorial type, butter-smooth tiles, themes, a UTC daily challenge, and a working PWA. No accounts, no ads, no paywall.
+A calm take on 2048 — themes, a UTC daily challenge, and a working PWA. No accounts, no ads, no paywall.
 
-![2048](brand/logo-c.png)
-
-### [Play live](https://dust2ash7.github.io/2048-puzzle/)
-
----
+**Play:** [https://dust2ash7.github.io/2048-puzzle/](https://dust2ash7.github.io/2048-puzzle/)
 
 ## How to play
 
@@ -22,50 +18,20 @@ Slide the 4×4 grid so equal numbers collide. Each tile may merge **once per mov
 
 **Controls**
 - Desktop: arrow keys or WASD
-- Phone: swipe on the board (the rest of the page still scrolls)
+- Phone: swipe on the board
 - Undo last move: button or `U`
-
-## Features
-
-- Authentic 2048 rules, including continue-after-win
-- Transform-based tile motion and a merge pop (honors `prefers-reduced-motion`)
-- Undo of the last successful move
-- Three palettes — **Obsidian** (dark), **Porcelain** (light), **Aurora** (night) — saved in `localStorage`
-- Stats: best score, best tile, games played, wins
-- Daily challenge: board RNG seeded from the UTC date; today’s best is saved
-- Web Audio beeps with mute (also silent when reduced motion is on)
-- Start screen, win overlay (Continue / New Game / Undo), game-over overlay (New Game / Undo)
-- PWA: installable, caches the app shell, GitHub Pages compatible
-- Keyboard, swipe, focus rings, button labels, contrast, `aria-live` status
 
 ## Run locally
 
-This is a static site. From the repo root:
-
 ```bash
-# Python
 python3 -m http.server 8080
-
-# or Node
-npx --yes serve .
 ```
 
-Then open `http://localhost:8080`. A local server is recommended so the service worker and manifest resolve correctly.
+Then open `http://localhost:8080`. A local server helps the service worker and manifest resolve.
 
-## GitHub Pages
+GitHub Pages: **https://dust2ash7.github.io/2048-puzzle/**
 
-Already wired for project pages with files at the repository root:
+---
 
-**https://dust2ash7.github.io/2048-puzzle/**
-
-If you fork it, enable Pages on the `main` branch (root).
-
-## Files
-
-| File | Role |
-| --- | --- |
-| `index.html` | Shell, overlays, PWA hooks |
-| `style.css` | Theme system, board, motion |
-| `script.js` | Rules, input, audio, persistence |
-| `manifest.json` / `sw.js` | Installable app shell |
-| `brand/logo-c.png` | Icon / brand mark |
+Raven Flock — quiet tools.  
+*Consider the ravens.* · A reminder you are not forgotten.
