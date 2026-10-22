@@ -10,7 +10,7 @@
 
 A calm take on 2048 — themes, a UTC daily challenge, and a working PWA. No accounts, no ads, no paywall.
 
-**Play:** [https://dust2ash7.github.io/2048-puzzle/](https://dust2ash7.github.io/2048-puzzle/)
+**Play:** [https://raven-flock.github.io/2048-puzzle/](https://raven-flock.github.io/2048-puzzle/)
 
 ## How to play
 
@@ -29,7 +29,7 @@ python3 -m http.server 8080
 
 Then open `http://localhost:8080`. A local server helps the service worker and manifest resolve.
 
-GitHub Pages: **https://dust2ash7.github.io/2048-puzzle/**
+GitHub Pages: **https://raven-flock.github.io/2048-puzzle/**
 
 ---
 
